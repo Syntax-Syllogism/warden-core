@@ -1,0 +1,141 @@
+{
+  "$id": "https://raw.githubusercontent.com/Syntax-Syllogism/warden-core/release/schemas/related-catalog.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": {},
+  "description": "A Warden related-record catalog.",
+  "properties": {
+    "relationships": {
+      "additionalProperties": {
+        "additionalProperties": {},
+        "description": "A reusable related-record relationship.",
+        "properties": {
+          "fields": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "from": {
+                      "description": "A source such as user.Department or user.Id.",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "from"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "value": {
+                      "description": "A literal value."
+                    }
+                  },
+                  "required": [
+                    "value"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            "description": "Target fields and their source expressions.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "match": {
+            "additionalProperties": {},
+            "description": "Target match configuration.",
+            "properties": {
+              "field": {
+                "description": "Target field used to find an existing record.",
+                "type": "string"
+              },
+              "from": {
+                "description": "User source used for the target match.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "field",
+              "from"
+            ],
+            "type": "object"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "setIfEmpty",
+                  "sync"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How configured fields are updated."
+          },
+          "phase": {
+            "description": "When the relationship is applied.",
+            "enum": [
+              "before",
+              "after"
+            ],
+            "type": "string"
+          },
+          "recordType": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "properties": {
+                  "developerName": {
+                    "description": "Record Type developer name.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "developerName"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional target record type."
+          },
+          "sobject": {
+            "description": "Target Salesforce object API name.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sobject",
+          "phase",
+          "match",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "description": "Relationships keyed by name.",
+      "propertyNames": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "schemaVersion": {
+      "const": 1,
+      "description": "Supported file schema version. Omit it for version 1.",
+      "type": "number"
+    }
+  },
+  "required": [
+    "relationships"
+  ],
+  "title": "Warden related catalog schema",
+  "type": "object"
+}

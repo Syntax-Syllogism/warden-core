@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "profile": "Standard User",
+      "match": "Employee_ID__c",
+      "Employee_ID__c": "E-9981",
+      "FirstName": "Ana",
+      "LastName": "Park",
+      "Email": "ana.park@acme.com",
+      "TimeZoneSidKey": "America/Los_Angeles",
+      "LocaleSidKey": "en_US",
+      "EmailEncodingKey": "UTF-8",
+      "LanguageLocaleKey": "en_US"
+    }
+  ]
+}

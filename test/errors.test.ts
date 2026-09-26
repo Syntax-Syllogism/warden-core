@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { UserAccessError } from '../src/access/types.js';
 import { WardenError, isWardenError } from '../src/errors.js';
 
 describe('WardenError', () => {
@@ -24,6 +25,16 @@ describe('isWardenError', () => {
   it('recognizes a structurally cloned WardenError from another package copy', () => {
     const clone: unknown = structuredClone({ name: 'WardenError', code: 'cancelled', message: 'Cancelled' });
     expect(isWardenError(clone)).to.equal(true);
+  });
+
+  it('recognizes structurally cloned area errors from another package copy', () => {
+    const clone: unknown = structuredClone({
+      name: 'UserAccessError',
+      code: 'errorInvalidTarget',
+      message: 'Invalid target value: User.',
+    });
+    expect(isWardenError(clone)).to.equal(true);
+    expect(isWardenError(new UserAccessError('errorInvalidTarget', ['User']))).to.equal(true);
   });
 
   it('rejects other values', () => {

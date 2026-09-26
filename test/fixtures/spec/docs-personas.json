@@ -1,0 +1,17 @@
+{
+  "personas": {
+    "admin": {
+      "profile": "Admin",
+      "role": "CEO",
+      "permissionSetMode": "additive",
+      "permissionSets": ["Admin_Permissions"],
+      "permissionSetGroupMode": "additive",
+      "permissionSetGroups": ["Admin_Group"],
+      "publicGroupMode": "sync",
+      "publicGroups": ["Admin_Public_Group"],
+      "queueMode": "additive",
+      "queues": ["Case_Queue"],
+      "userAttributes": { "Title": "Salesforce Administrator", "Department": "Sales" }
+    }
+  }
+}

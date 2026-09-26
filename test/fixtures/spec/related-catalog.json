@@ -1,0 +1,14 @@
+{
+  "relationships": {
+    "employee": {
+      "sobject": "Employee__c",
+      "phase": "after",
+      "match": { "field": "External_Person_Id__c", "from": "user.FederationIdentifier" },
+      "fields": {
+        "Department__c": { "from": "user.Department" },
+        "Employment_Status__c": { "value": "Active" },
+        "User__c": { "from": "user.Id" }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "users": [
+    { "personas": ["ops"], "match": "FederationIdentifier", "FederationIdentifier": "ABC123", "LastName": "Park" },
+    { "personas": ["csr"], "match": "Username", "Username": "bob@acme.com.dev", "LastName": "Bob" },
+    { "personas": ["finance"], "match": "Employee_ID__c", "Employee_ID__c": "E-9981", "LastName": "Su" },
+    { "personas": ["creator"], "Username": "alice@acme.com.dev", "LastName": "Alice" }
+  ]
+}

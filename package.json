@@ -1,7 +1,7 @@
 {
   "name": "@syntax-syllogism/warden-core",
   "description": "Shared Warden engine: the user-lifecycle library behind the warden CLI, VS Code extension, and SFDX package.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Jake Richter <j.p.richter@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/Syntax-Syllogism/warden-core#readme",
@@ -41,11 +41,12 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p .",
+    "build": "tsc -p . && node scripts/gen-json-schema.mjs",
     "clean": "rm -rf lib",
     "lint": "eslint src test",
     "format": "prettier --write \"+(src|test|scripts)/**/*.+(ts|js|mjs|json)\"",
     "format:check": "prettier --check \"+(src|test|scripts)/**/*.+(ts|js|mjs|json)\"",
+    "schemas:check": "npm run build && git diff --exit-code -- schemas/",
     "typecheck": "tsc -p . --noEmit && tsc -p test --noEmit",
     "test:only": "TS_NODE_PROJECT=test/tsconfig.json mocha \"test/**/*.test.ts\"",
     "test": "npm run typecheck && npm run lint && npm run format:check && c8 npm run test:only",
@@ -58,7 +59,8 @@
   },
   "devDependencies": {
     "@salesforce/dev-config": "^4.1.0",
-    "@salesforce/prettier-config": "^0.0.3",
+    "@salesforce/prettier-config": "^0.0.4",
+    "ajv": "^8.18.0",
     "@types/chai": "^4.3.14",
     "@types/mocha": "^10.0.6",
     "@types/node": "^22",

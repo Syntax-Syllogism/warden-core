@@ -13,6 +13,17 @@ export class WardenError<C extends string = string, D = unknown> extends Error {
   }
 }
 
+const WARDEN_ERROR_NAMES = new Set([
+  'WardenError',
+  'AccessError',
+  'UserAccessError',
+  'LifecycleError',
+  'ProvisioningError',
+  'DefinitionError',
+  'CsvReadError',
+  'RelatedRecordsError',
+]);
+
 /**
  * Structural check for {@link WardenError}. Prefer this over `instanceof`,
  * which fails when a consumer ends up with two copies of this package.
@@ -21,6 +32,8 @@ export const isWardenError = (error: unknown): error is WardenError =>
   error instanceof WardenError ||
   (typeof error === 'object' &&
     error !== null &&
-    (error as { name?: unknown }).name === 'WardenError' &&
+    WARDEN_ERROR_NAMES.has(
+      typeof (error as { name?: unknown }).name === 'string' ? (error as { name: string }).name : ''
+    ) &&
     typeof (error as { code?: unknown }).code === 'string' &&
     typeof (error as { message?: unknown }).message === 'string');

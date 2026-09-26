@@ -1,0 +1,128 @@
+{
+  "$id": "https://raw.githubusercontent.com/Syntax-Syllogism/warden-core/release/schemas/snapshot.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": {},
+  "description": "A Warden User snapshot file.",
+  "properties": {
+    "capturedAt": {
+      "description": "Capture timestamp in ISO format.",
+      "type": "string"
+    },
+    "org": {
+      "description": "Optional org alias or username.",
+      "type": "string"
+    },
+    "snapshotVersion": {
+      "const": 1,
+      "description": "Snapshot format version.",
+      "type": "number"
+    },
+    "users": {
+      "description": "Captured User state.",
+      "items": {
+        "additionalProperties": {},
+        "description": "A User assignment snapshot entry.",
+        "properties": {
+          "email": {
+            "description": "User email at capture time.",
+            "type": "string"
+          },
+          "IsActive": {
+            "description": "Whether the User was active at capture time.",
+            "type": "boolean"
+          },
+          "IsFrozen": {
+            "description": "Whether the User login was frozen at capture time.",
+            "type": "boolean"
+          },
+          "match": {
+            "description": "User field used to identify the snapshot entry.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "matchValue": {
+            "description": "Value used with the match field.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "description": "User name at capture time.",
+            "type": "string"
+          },
+          "permissionSetGroups": {
+            "description": "Permission Set Group names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "permissionSetLicenses": {
+            "description": "Permission Set License names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "permissionSets": {
+            "description": "Permission Set names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "profile": {
+            "description": "User profile at capture time.",
+            "type": "string"
+          },
+          "publicGroups": {
+            "description": "Public Group names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "queues": {
+            "description": "Queue names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "role": {
+            "description": "User role at capture time.",
+            "type": "string"
+          },
+          "userId": {
+            "description": "Salesforce User Id.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "username": {
+            "description": "User username at capture time.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "match",
+          "matchValue",
+          "userId",
+          "IsActive",
+          "IsFrozen",
+          "permissionSets",
+          "permissionSetGroups",
+          "publicGroups",
+          "queues",
+          "permissionSetLicenses"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "snapshotVersion",
+    "users"
+  ],
+  "title": "Warden snapshot schema",
+  "type": "object"
+}

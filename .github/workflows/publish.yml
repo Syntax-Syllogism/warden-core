@@ -28,10 +28,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
@@ -49,5 +49,11 @@ jobs:
       - name: Verify package contents
         run: npm run pack:check
 
+      # Bootstrap: the first publish authenticates with NPM_TOKEN because npm
+      # trusted publishing can only be configured once the package exists.
+      # Remove this env block (and the secret) once the trusted publisher is
+      # set up; see the first-time npm publish runbook.
       - name: Publish to npm
         run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

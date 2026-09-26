@@ -1,0 +1,36 @@
+{
+  "$id": "https://raw.githubusercontent.com/Syntax-Syllogism/warden-core/release/schemas/users-definition.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": {},
+  "description": "A Warden JSON users definition file.",
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "Supported file schema version. Omit it for version 1.",
+      "type": "number"
+    },
+    "users": {
+      "description": "User definitions.",
+      "items": {
+        "additionalProperties": {},
+        "description": "A User field record with optional Warden metadata.",
+        "properties": {
+          "personas": {
+            "description": "Persona names to merge for this user.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "users"
+  ],
+  "title": "Warden users definition schema",
+  "type": "object"
+}

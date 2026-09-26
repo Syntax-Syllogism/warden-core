@@ -66,12 +66,15 @@ move the code that complies and leave the rest behind.
    change; removing or renaming one, or changing a signature or result shape,
    is major. `test/index.test.ts` pins the exported keys.
 
-## Open questions
+## Resolved questions
 
-- **`@salesforce/core`: dependency or peerDependency?** It is a regular
-  dependency for now, as in simply-*-core. If bundling warden-core into the VS
-  Code extension shows that two copies of `@salesforce/core` cause `instanceof`
-  or auth-state problems, make it a peerDependency and record that here.
+- **`@salesforce/core`: dependency or peerDependency?** A direct dependency.
+  Bundling `@salesforce/core` into the VS Code extension host was verified
+  with esbuild: it authenticates from the sf CLI's auth store and queries an
+  org in process, with no esbuild changes beyond setting
+  `SF_DISABLE_LOG_FILE=true` before the first import. The extension bundles
+  everything (`vsce package --no-dependencies`), so a peer dependency would
+  add consumer burden without benefit.
 
 ## Consequences
 

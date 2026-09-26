@@ -6,6 +6,28 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    # The test/lint toolchain is pinned to match the warden plugin so tests
+    # move between the repos unchanged; upgrade these majors deliberately,
+    # in both repos at once. @types/node tracks the `engines` floor (22).
+    ignore:
+      - dependency-name: 'mocha'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'sinon'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/sinon'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'chai'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/chai'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'eslint-config-salesforce-typescript'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'prettier'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       npm-minor-patch:
         update-types:

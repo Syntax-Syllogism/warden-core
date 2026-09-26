@@ -1,0 +1,108 @@
+{
+  "$id": "https://raw.githubusercontent.com/Syntax-Syllogism/warden-core/release/schemas/persona-definitions.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": {},
+  "description": "A Warden persona definitions file.",
+  "properties": {
+    "personas": {
+      "additionalProperties": {
+        "additionalProperties": {},
+        "description": "A reusable set of User fields and assignments. Unknown metadata keys are preserved.",
+        "properties": {
+          "permissionSetGroupMode": {
+            "description": "Permission Set Group assignment mode.",
+            "enum": [
+              "additive",
+              "sync"
+            ],
+            "type": "string"
+          },
+          "permissionSetGroups": {
+            "description": "Permission Set Group names or Salesforce Ids.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "permissionSetMode": {
+            "description": "Permission Set assignment mode.",
+            "enum": [
+              "additive",
+              "sync"
+            ],
+            "type": "string"
+          },
+          "permissionSets": {
+            "description": "Permission Set names or Salesforce Ids.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "profile": {
+            "description": "Profile name or Salesforce Id.",
+            "type": "string"
+          },
+          "publicGroupMode": {
+            "description": "Public Group assignment mode.",
+            "enum": [
+              "additive",
+              "sync"
+            ],
+            "type": "string"
+          },
+          "publicGroups": {
+            "description": "Public Group names or Salesforce Ids.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "queueMode": {
+            "description": "Queue assignment mode.",
+            "enum": [
+              "additive",
+              "sync"
+            ],
+            "type": "string"
+          },
+          "queues": {
+            "description": "Queue names or Salesforce Ids.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "role": {
+            "description": "Role name or Salesforce Id.",
+            "type": "string"
+          },
+          "userAttributes": {
+            "additionalProperties": {},
+            "description": "User fields applied by this persona.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "description": "Persona definitions keyed by persona name.",
+      "propertyNames": {
+        "type": "string"
+      },
+      "type": "object"
+    },
+    "schemaVersion": {
+      "const": 1,
+      "description": "Supported file schema version. Omit it for version 1.",
+      "type": "number"
+    }
+  },
+  "required": [
+    "personas"
+  ],
+  "title": "Warden persona definitions schema",
+  "type": "object"
+}

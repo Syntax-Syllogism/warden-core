@@ -1,0 +1,15 @@
+{
+  "users": [
+    {
+      "personas": ["admin"],
+      "FederationIdentifier": "ABCD1234",
+      "FirstName": "John",
+      "LastName": "Doe",
+      "Email": "jdoe@email.com",
+      "LocaleSidKey": "en_US",
+      "EmailEncodingKey": "UTF-8",
+      "LanguageLocaleKey": "en_US",
+      "TimeZoneSidKey": "America/Los_Angeles"
+    }
+  ]
+}
