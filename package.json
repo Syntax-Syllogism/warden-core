@@ -1,0 +1,76 @@
+{
+  "name": "@syntax-syllogism/warden-core",
+  "description": "Shared Warden engine: the user-lifecycle library behind the warden CLI, VS Code extension, and SFDX package.",
+  "version": "0.1.0",
+  "author": "Jake Richter <j.p.richter@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/Syntax-Syllogism/warden-core#readme",
+  "bugs": "https://github.com/Syntax-Syllogism/warden-core/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Syntax-Syllogism/warden-core.git"
+  },
+  "keywords": [
+    "salesforce",
+    "sf",
+    "sfdx",
+    "warden",
+    "user lifecycle"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "files": [
+    "/lib",
+    "/schemas",
+    "/conformance",
+    "/CHANGELOG.md",
+    "/LICENSE"
+  ],
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./schemas/*": "./schemas/*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "clean": "rm -rf lib",
+    "lint": "eslint src test",
+    "format": "prettier --write \"+(src|test|scripts)/**/*.+(ts|js|mjs|json)\"",
+    "format:check": "prettier --check \"+(src|test|scripts)/**/*.+(ts|js|mjs|json)\"",
+    "typecheck": "tsc -p . --noEmit && tsc -p test --noEmit",
+    "test:only": "TS_NODE_PROJECT=test/tsconfig.json mocha \"test/**/*.test.ts\"",
+    "test": "npm run typecheck && npm run lint && npm run format:check && c8 npm run test:only",
+    "pack:check": "node scripts/check-pack.mjs",
+    "prepack": "npm run clean && npm run build"
+  },
+  "dependencies": {
+    "@salesforce/core": "^8",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@salesforce/dev-config": "^4.1.0",
+    "@salesforce/prettier-config": "^0.0.3",
+    "@types/chai": "^4.3.14",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^22",
+    "@types/sinon": "^10.0.20",
+    "c8": "^11.0.0",
+    "chai": "^4.3.10",
+    "eslint": "^8.57.0",
+    "eslint-config-salesforce-typescript": "^3.3.0",
+    "mocha": "^10.4.0",
+    "prettier": "^2.8.8",
+    "sinon": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}
