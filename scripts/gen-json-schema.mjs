@@ -23,6 +23,7 @@ const schemaModules = [
   ['users-definition', 'usersDefinition', 'usersDefinitionFileSchema'],
   ['related-catalog', 'relatedCatalog', 'relatedCatalogSchema'],
   ['snapshot', 'snapshot', 'snapshotFileSchema'],
+  ['conformance-fixture', 'conformanceFixture', 'conformanceFixtureSchema'],
 ];
 
 await mkdir(outputDirectory, { recursive: true });

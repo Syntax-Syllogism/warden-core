@@ -19,7 +19,7 @@ export { getResolver } from './access/resolvers/index.js';
 export { resolveReverseAccess, reverseCsvColumns } from './access/reverse.js';
 
 export { LifecycleError } from './lifecycle/errors.js';
-export { executeFreezeToggle, FREEZE, UNFREEZE } from './lifecycle/freezeState.js';
+export { FREEZE, UNFREEZE } from './lifecycle/freezeState.js';
 export {
   failedResult,
   makeNotice,
@@ -27,7 +27,6 @@ export {
   resolvedTargetResult,
   summarizeLifecycle,
 } from './lifecycle/output.js';
-export { executeStrip } from './lifecycle/stripPlan.js';
 export { buildSnapshotFile, readSnapshotFile, writeSnapshotFile } from './lifecycle/snapshotState.js';
 export { buildTargetRequests, parseUserFlag, resolveTargetField, resolveTargets } from './lifecycle/targeting.js';
 export { executePersonaDiff, executeUserToUserDiff } from './lifecycle/userDiff.js';
@@ -68,7 +67,6 @@ export {
   validateUsersDefinitionText,
 } from './spec/index.js';
 
-export { confirmWithTimeout } from './shared/prompt.js';
 export { detectInputFormat, serializeCsv } from './shared/csv.js';
 export { describeUserFields } from './shared/userFields.js';
 export {
@@ -80,7 +78,52 @@ export {
 } from './shared/output.js';
 export { soqlIn } from './shared/sfUtils.js';
 
+export { access, commandDescriptors, diff, freeze, provision, restore, snapshot, strip, unfreeze } from './useCases.js';
+export {
+  accessOptionsSchema,
+  diffOptionsSchema,
+  freezeOptionsSchema,
+  provisionOptionsSchema,
+  restoreOptionsSchema,
+  snapshotOptionsSchema,
+  stripOptionsSchema,
+  unfreezeOptionsSchema,
+} from './commandOptions.js';
+export { uiHints } from './useCase.js';
+export { planFromState } from './provisioning/conformancePlan.js';
+export {
+  conformanceCategorySchema,
+  conformanceDefinitionsSchema,
+  conformanceFixtureSchema,
+  conformanceOrgStateSchema,
+  conformancePlanRowSchema,
+  conformanceUsersDefinitionSchema,
+  parseConformanceFixture,
+  safeParseConformanceFixture,
+  validateConformanceFixtureText,
+} from './spec/index.js';
+
 export type { InputFormat } from './shared/csv.js';
+export type {
+  AccessOptions,
+  DiffOptions,
+  FreezeOptions,
+  ProvisionOptions,
+  RestoreOptions,
+  SnapshotOptions,
+  StripOptions,
+  UnfreezeOptions,
+} from './commandOptions.js';
+export type {
+  CommandDescriptor,
+  ProgressEvent,
+  ReadUseCase,
+  UiHint,
+  UseCase,
+  UseCaseContext,
+  WriteUseCase,
+} from './useCase.js';
+export type { FreezePlan, ProvisionPlan, RestorePlan, StripPlan } from './useCases.js';
 export type { AccessTargetType, UserAccessResult, UserAccessRow, ValidatedAccessTarget } from './access/types.js';
 export type { AssignmentState } from './lifecycle/assignmentState.js';
 export type {
@@ -96,6 +139,13 @@ export type { StripFlags } from './lifecycle/stripPlan.js';
 export type { UserDiffResult } from './lifecycle/userDiff.js';
 export type { UserConformanceVerdict } from './lifecycle/conformance.js';
 export type { UserSnapshotEntry } from './lifecycle/snapshotState.js';
+export type {
+  ConformanceCategory,
+  ConformanceDefinitions,
+  ConformanceFixture,
+  ConformanceOrgState,
+  ConformancePlanRow,
+} from './spec/index.js';
 export type {
   PersonaDefinition,
   PersonaDefinitionsFile,

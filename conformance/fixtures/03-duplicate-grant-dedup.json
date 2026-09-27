@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "definitions": {
+    "personas": {
+      "personas": {
+        "one": { "permissionSets": ["Shared_Access"] },
+        "two": { "permissionSets": ["Shared_Access", "Shared_Access"] }
+      }
+    },
+    "users": {
+      "users": [{ "userKey": "duplicate-user", "userId": "005000000000003AAA", "personas": ["one", "two"] }]
+    }
+  },
+  "orgState": {
+    "permissionSets": [{ "id": "0PS000000000005AAA", "name": "Shared_Access", "label": "Shared Access" }],
+    "permissionSetGroups": [],
+    "groups": [],
+    "permissionSetAssignments": [],
+    "groupMembers": []
+  },
+  "expectedPlan": [
+    { "userKey": "duplicate-user", "userId": "005000000000003AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Shared Access", "error": "" }
+  ]
+}

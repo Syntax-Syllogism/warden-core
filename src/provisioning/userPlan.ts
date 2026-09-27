@@ -196,10 +196,10 @@ export const buildUserPlans = (options: {
       matchedBy,
       matchValue: usableMatchValue(matchValue),
       target,
-      existing: existingUser,
+      ...(existingUser ? { existing: existingUser } : {}),
       actions,
       errors,
-      source: user.source,
+      ...(user.source ? { source: user.source } : {}),
       ...(relatedPlans ? { relatedPlans } : {}),
     };
   });

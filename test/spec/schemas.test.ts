@@ -4,11 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { expect } from 'chai';
 import {
+  parseConformanceFixture,
   parsePersonaDefinitions,
   parseRelatedCatalog,
   parseSnapshot,
   parseUsersDefinition,
+  safeParseConformanceFixture,
   safeParsePersonaDefinitions,
+  validateConformanceFixtureText,
   validateUsersDefinitionText,
 } from '../../src/spec/parse.js';
 import { DefinitionError } from '../../src/provisioning/errors.js';
@@ -110,6 +113,24 @@ describe('file-format schemas', () => {
       }
     }
     expect(() => parseSnapshot({ snapshotVersion: 2, capturedAt: 'now', users: [] })).to.throw(DefinitionError);
+  });
+
+  it('rejects newer conformance fixture schema versions through every parser entry point', () => {
+    const input = { schemaVersion: 2 };
+    const safeResult = safeParseConformanceFixture(input);
+    expect(safeResult.ok).to.equal(false);
+    if (!safeResult.ok) expect(safeResult.error.code).to.equal('schema-version-unsupported');
+
+    expect(() => parseConformanceFixture(input)).to.throw(DefinitionError);
+    try {
+      parseConformanceFixture(input);
+    } catch (error) {
+      expect(error).to.have.property('code', 'schema-version-unsupported');
+    }
+
+    const textResult = validateConformanceFixtureText(JSON.stringify(input));
+    expect(textResult.ok).to.equal(false);
+    if (!textResult.ok) expect(textResult.error.code).to.equal('schema-version-unsupported');
   });
 
   it('accepts legacy version-1 snapshots without capturedAt', () => {

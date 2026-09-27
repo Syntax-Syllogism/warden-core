@@ -96,13 +96,24 @@ and `role` strings are optional. Snapshot documents and entries preserve
 unknown keys; snapshots use `snapshotVersion` rather than the shared
 `schemaVersion` policy.
 
+### Conformance fixtures
+
+Conformance fixtures are versioned JSON documents containing canonical persona
+and user definitions, a simulated setup-object/assignment state, and an
+expected deterministic v1 reconciliation plan. Their Zod schema is exported
+as `conformanceFixtureSchema`; the pure planner is `planFromState`. See the
+[conformance guide](conformance.md) and the top-level
+[`conformance/README.md`](../conformance/README.md) for the fixture format and
+canonical examples.
+
 ## Parser API
 
 The public API exports a schema, an inferred type, and three parser forms for
 each JSON format:
 
 - `parsePersonaDefinitions`, `parseUsersDefinition`, `parseRelatedCatalog`,
-  and `parseSnapshot` return parsed data or throw `DefinitionError`.
+  `parseSnapshot`, and `parseConformanceFixture` return parsed data or throw
+  `DefinitionError`.
 - The matching `safeParse*` functions return a `SchemaResult` without throwing
   for structural or version failures.
 - The matching `validate*Text` functions parse JSON text in memory, so editors
@@ -117,12 +128,13 @@ document root. The throwing parsers expose the same issues on the
 
 ## Generating the artifacts
 
-`npm run build` compiles the TypeScript schemas and regenerates all four files:
+`npm run build` compiles the TypeScript schemas and regenerates all five files:
 
 - `schemas/persona-definitions.schema.json`
 - `schemas/users-definition.schema.json`
 - `schemas/related-catalog.schema.json`
 - `schemas/snapshot.schema.json`
+- `schemas/conformance-fixture.schema.json`
 
 Run `npm run schemas:check` when changing a schema or its descriptions. It
 regenerates the artifacts and fails if the checked-in `schemas/` files differ.

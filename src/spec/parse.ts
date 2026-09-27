@@ -4,6 +4,8 @@ import { personaDefinitionsFileSchema } from './personaDefinitions.js';
 import { relatedCatalogSchema } from './relatedCatalog.js';
 import { snapshotFileSchema } from './snapshot.js';
 import { usersDefinitionFileSchema } from './usersDefinition.js';
+import { conformanceFixtureSchema } from './conformanceFixture.js';
+import type { ConformanceFixture } from './conformanceFixture.js';
 import type { PersonaDefinitionsFile } from './personaDefinitions.js';
 import type { RelatedCatalog } from './relatedCatalog.js';
 import type { UserSnapshotFile } from './snapshot.js';
@@ -104,3 +106,10 @@ export const safeParseSnapshot = (input: unknown): SchemaResult<UserSnapshotFile
 export const parseSnapshot = (input: unknown): UserSnapshotFile => parseOrThrow(safeParseSnapshot(input));
 export const validateSnapshotText = (text: string): SchemaResult<UserSnapshotFile> =>
   parseText((input) => parseSchema(snapshotFileSchema, input), text, 'Snapshot');
+
+export const safeParseConformanceFixture = (input: unknown): SchemaResult<ConformanceFixture> =>
+  parseVersionedSchema(conformanceFixtureSchema, input);
+export const parseConformanceFixture = (input: unknown): ConformanceFixture =>
+  parseOrThrow(safeParseConformanceFixture(input));
+export const validateConformanceFixtureText = (text: string): SchemaResult<ConformanceFixture> =>
+  parseText((input) => parseVersionedSchema(conformanceFixtureSchema, input), text, 'Conformance fixture');

@@ -9,9 +9,12 @@ dependency. Call its functions directly from a script, an editor extension, a
 CI job, or any other Node codebase.
 
 The [domain guides](docs/) describe the implemented workflows and data
-contracts for [access auditing](docs/access.md),
+contracts for [callable command use cases](docs/use-cases.md),
+[access auditing](docs/access.md),
 [lifecycle operations](docs/lifecycle.md), [provisioning](docs/provisioning.md),
-[related records](docs/related-records.md), and [user matching](docs/matching.md).
+[related records](docs/related-records.md), [user matching](docs/matching.md),
+[file-format schemas](docs/spec-schemas.md), and
+[conformance fixtures](docs/conformance.md).
 
 ## Install
 
@@ -31,7 +34,11 @@ Requires Node.js 22 or later.
 | `LifecycleError` | Typed lifecycle-operation errors. |
 | `ProvisioningError`, `DefinitionError` | Typed provisioning and definition-reading errors. |
 | `RelatedRecordsError` | Typed related-record catalog errors. |
+| `commandDescriptors` | Metadata and Zod option schemas for the eight callable command use cases. `uiHints(schema)` reads the front-end input hints without coupling callers to Zod internals. |
+| `provision`, `freeze`, `unfreeze`, `strip`, `restore` | Write use cases exposing `plan()` and `apply()`. Plans are plain JSON-safe data and carry warnings for the caller to present before confirmation. |
+| `access`, `diff`, `snapshot` | Read use cases exposing `run()`. Diff accepts `verify` for persona conformance results; snapshot returns the file object and the caller owns serialization and filesystem output. |
 | File-format schemas and parsers | Zod schemas, JSON-text validators, and inferred types for persona, users, related-catalog, and snapshot files. |
+| `conformanceFixtureSchema`, `planFromState` | The versioned fixture contract and pure v1 additive reconciliation planner. |
 | Lifecycle, access, provisioning, CSV, snapshot, and rendering functions | Framework-free domain operations used by Warden consumers. |
 
 ```ts
@@ -48,6 +55,15 @@ try {
 }
 ```
 
+Write commands keep confirmation in the front end and make the state boundary
+explicit:
+
+```ts
+const plan = await freeze.plan(connection, options, { onProgress });
+// Show plan.warnings and plan.users, then confirm in the caller.
+const result = await freeze.apply(connection, JSON.parse(JSON.stringify(plan)));
+```
+
 ## Errors
 
 Errors are reported as `WardenError` instances (or area-specific subclasses).
@@ -58,14 +74,14 @@ text is not and may be reworded in any release.
 | --- | --- |
 | `errorUnsupportedAccessType`, `errorInvalidTarget`, `errorFieldTargetMustBeQualified`, `errorObjectNotFound`, `errorFieldNotFound`, `errorApexClassNotFound`, `errorVisualforcePageNotFound`, `errorCustomPermissionNotFound`, `errorTabNotFound`, `errorRecordTypeTargetMustBeQualified`, `errorMasterRecordTypeUnsupported`, `errorRecordTypeNotFound`, `errorRecordTypeAmbiguous`, `errorRecordTypeInactive`, `errorRecordTypeMetadataReadFailed`, `errorAccessQueryFailed` | Access audit and target resolution. |
 | `errorInvalidCsv`, `errorInvalidJson`, `errorInvalidPersonaDefinition`, `errorMissingUserFieldMap`, `errorPersonasWithoutDefinition` | Definition readers. |
-| `errorInvalidJson`, `errorInvalidUserMatchField`, `errorInvalidUserValue`, `errorInvalidAgainstValue`, `errorInvalidAgainstMatchField`, `errorInvalidSnapshot`, `errorPromptDeclined` | Lifecycle targeting, snapshot validation, and operations. |
+| `errorInvalidJson`, `errorInvalidUserMatchField`, `errorInvalidUserValue`, `errorInvalidAgainstValue`, `errorInvalidAgainstMatchField`, `errorInvalidSnapshot`, `errorPromptDeclined`, `errorAccessScopesMutuallyExclusive`, `errorVerifyUserMode` | Lifecycle targeting, snapshot validation, access scope validation, and diff verification. |
 | `errorInvalidRelatedCatalog`, `errorRelationshipInvalidDefinition`, `errorRelationshipInvalidSobject`, `errorRelationshipMissingPhase`, `errorRelationshipInvalidPhase`, `errorPhaseBeforeUnsupported`, `errorLinkUserUnsupported`, `errorRelatedContextUnsupported`, `errorRelationshipInvalidMatch`, `errorRelationshipMatchFromUserId`, `errorRelationshipInvalidFields`, `errorRelationshipInvalidSource`, `errorRelationshipInvalidFrom`, `errorRelationshipUnknownUserField`, `errorRelationshipUnwritableField`, `errorRelationshipInvalidMode`, `errorRelationshipInvalidRecordType` | Related-record catalog validation. |
 | `errorDuplicateExternalIdMatch`, `errorMissingRequiredFields`, `errorMissingSaveId`, `errorPromptDeclined`, `errorInvalidJson`, `errorInvalidPersonaDefinition`, `errorPersonasWithoutDefinition` | Provisioning execution and planning. |
 | `schema-invalid`, `schema-version-unsupported` | Structural file-format validation. `data.issues` contains `{ path, message }` entries. |
 
 ## File formats and schemas
 
-The four JSON file formats are defined by the exported Zod schemas and the
+The five JSON file formats are defined by the exported Zod schemas and the
 generated Draft 2020-12 schemas. See the detailed
 [file-format schema guide](docs/spec-schemas.md)
 for the full structural contract, parser results, versioning behavior, and
@@ -80,6 +96,12 @@ artifact-generation workflow.
   `{ relationships: Record<string, RelationshipDef> }`.
 - [snapshot](schemas/snapshot.schema.json): the lifecycle snapshot with
   `snapshotVersion: 1`.
+- [conformance fixture](schemas/conformance-fixture.schema.json): the
+  engine-neutral definitions + simulated org state + expected plan contract.
+
+The canonical conformance fixtures are published under
+[`conformance/`](conformance/README.md). They are the executable spec shared
+by the TypeScript and Apex planning engines.
 
 ## Versioning
 

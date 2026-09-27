@@ -49,11 +49,6 @@ jobs:
       - name: Verify package contents
         run: npm run pack:check
 
-      # Bootstrap: the first publish authenticates with NPM_TOKEN because npm
-      # trusted publishing can only be configured once the package exists.
-      # Remove this env block (and the secret) once the trusted publisher is
-      # set up; see the first-time npm publish runbook.
+      # Authenticates through npm trusted publishing (OIDC); no token needed.
       - name: Publish to npm
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

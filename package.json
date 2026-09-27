@@ -1,7 +1,7 @@
 {
   "name": "@syntax-syllogism/warden-core",
   "description": "Shared Warden engine: the user-lifecycle library behind the warden CLI, VS Code extension, and SFDX package.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "Jake Richter <j.p.richter@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/Syntax-Syllogism/warden-core#readme",

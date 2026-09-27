@@ -7,7 +7,9 @@ export type LifecycleErrorCode =
   | 'errorInvalidAgainstValue'
   | 'errorInvalidAgainstMatchField'
   | 'errorInvalidSnapshot'
-  | 'errorPromptDeclined';
+  | 'errorPromptDeclined'
+  | 'errorAccessScopesMutuallyExclusive'
+  | 'errorVerifyUserMode';
 
 export class LifecycleError extends WardenError<LifecycleErrorCode> {
   public constructor(code: LifecycleErrorCode, message: string, data?: unknown) {

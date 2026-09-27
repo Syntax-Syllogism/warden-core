@@ -143,10 +143,8 @@ const checkFieldMetadata = (
 /**
  * Validate every relationship at least one user selected, once per batch.
  *
- * Ineligible relationships become warning lines rather than errors: they flow into the
- * single `acknowledgeWarnings` confirmation the command already issues, so confirming
- * skips them, declining exits before any DML, and `--no-prompt`/JSON runs skip
- * automatically.
+ * Ineligible relationships become warning lines rather than errors. Callers decide
+ * how to present those warnings before applying any DML.
  */
 export const runRelatedPreflight = async (options: {
   conn: Connection;

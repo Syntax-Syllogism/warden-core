@@ -1,10 +1,15 @@
 # Provisioning
 
-`ProvisionUserUseCase.execute` is the main provisioning workflow. It accepts a
-Salesforce `Connection`, user/persona definitions from paths or in-memory
-documents, matching options, `dryRun`, and optional related-record input. It
-returns a `ProvisionResult` with per-user actions, match identity, failures,
-and summary counts.
+The public provisioning boundary is the `provision` write use case:
+`provision.plan()` builds a JSON-safe plan and preview, and
+`provision.apply()` performs the user, related-record, and assignment writes
+after the caller's confirmation. See [Callable command use cases](use-cases.md)
+for its options and state boundary.
+
+The lower-level `ProvisionUserUseCase.execute` API remains exported for callers
+that need its single-call request shape, including its explicit `dryRun`
+option. Both APIs return a `ProvisionResult` with per-user actions, match
+identity, failures, and summary counts.
 
 The workflow is:
 
@@ -14,9 +19,10 @@ The workflow is:
    and Queue references by Salesforce Id or supported name.
 4. Match existing users using the selected match field or default external id.
 5. Build user and assignment plans, including additive or sync modes.
-6. In dry-run mode, calculate planned results and license usage without DML.
-7. In live mode, save Users in bulk, apply related records after a successful
-   User save, then apply assignments and post-save state.
+6. The write use case's `plan()` calculates planned results and license usage
+   without DML.
+7. Its `apply()` saves Users in bulk, applies related records after a
+   successful User save, then applies assignments and post-save state.
 
 Validation and planning happen before the corresponding user DML. A failed
 User save prevents that user's related-record work. Related-record failures do
@@ -55,11 +61,11 @@ callers.
 
 ## Warnings and errors
 
-Missing Salesforce references and license shortfalls are warnings. The current
-use case exposes `acknowledgeWarnings(warnings)` so a front end can decide how
-to handle them before live work; dry-run and non-interactive callers may omit
-it. Expected failures are `ProvisioningError` or `DefinitionError`, and
-consumers should use their stable codes rather than match message text.
+Missing Salesforce references and license shortfalls are warnings on the
+planning result. The front end decides how to handle them before calling
+`provision.apply()`. Expected failures are `ProvisioningError` or
+`DefinitionError`, and consumers should use their stable codes rather than
+match message text.
 
 `renderProvisionCsv` emits one row per action, related-record result, or error.
 Use `renderLifecycleCsv` and the other shared renderers for the corresponding

@@ -41,7 +41,8 @@ const performAssignmentDml = async (
   userId: string,
   dmlPlan: AssignmentDmlPlan,
   actions: string[],
-  errors: string[]
+  errors: string[],
+  beforeWrite: () => void = (): void => undefined
 ): Promise<void> => {
   const runDml = async (
     values: string[],
@@ -49,6 +50,7 @@ const performAssignmentDml = async (
     op: () => Promise<SaveResult | SaveResult[]>
   ): Promise<void> => {
     if (values.length === 0) return;
+    beforeWrite();
     const saveResults = asArray(await op());
     if (saveResults.some((saveResult) => saveResult.success)) actions.push(action);
     pushErrors(errors, saveResults);
@@ -98,7 +100,8 @@ const applyAssignments = async (
   refs: ResolvedRefs,
   dryRun: boolean,
   actions: string[],
-  errors: string[]
+  errors: string[],
+  beforeWrite: () => void = (): void => undefined
 ): Promise<void> => {
   if (!hasAssignmentIntent(persona, refs)) return;
 
@@ -115,10 +118,14 @@ const applyAssignments = async (
     appendAssignmentActions(actions, dmlPlan);
     return;
   }
-  await performAssignmentDml(conn, userId, dmlPlan, actions, errors);
+  await performAssignmentDml(conn, userId, dmlPlan, actions, errors, beforeWrite);
 };
 
-export const executeBulkUserSaves = async (conn: Connection, plans: UserPlan[]): Promise<UserSaveOutcome[]> => {
+export const executeBulkUserSaves = async (
+  conn: Connection,
+  plans: UserPlan[],
+  beforeStage: () => void = (): void => undefined
+): Promise<UserSaveOutcome[]> => {
   const validPlans = plans.filter((plan) => plan.errors.length === 0);
   const createPlans = validPlans.filter((plan) => !plan.existing);
   const updatePlans = validPlans.filter((plan): plan is UserPlan & { existing: NonNullable<UserPlan['existing']> } =>
@@ -127,6 +134,7 @@ export const executeBulkUserSaves = async (conn: Connection, plans: UserPlan[]):
   const outcomes: UserSaveOutcome[] = [];
 
   if (createPlans.length > 0) {
+    beforeStage();
     const createResults = asArray(
       await conn.sobject('User').create(
         createPlans.map((plan) => plan.target),
@@ -144,6 +152,7 @@ export const executeBulkUserSaves = async (conn: Connection, plans: UserPlan[]):
   }
 
   if (updatePlans.length > 0) {
+    beforeStage();
     const updateResults = asArray(
       await conn.sobject('User').update(
         updatePlans.map((plan) => ({ ...plan.target, Id: plan.existing.Id })),
@@ -194,12 +203,14 @@ export const applySavedPlan = async (options: {
   outcome: UserSaveOutcome;
   refs: ResolvedRefs;
   message?: (key: string, args?: string[]) => string;
+  beforeWrite?: () => void;
 }): Promise<OrderedUserResult> => {
-  const { conn, outcome, refs, message = provisioningMessage } = options;
+  const { conn, outcome, refs, message = provisioningMessage, beforeWrite = (): void => undefined } = options;
   const { plan, id } = outcome;
   if (!id) return toUserResult(plan, 'failed', { includeExistingId: false, errors: [message('errorMissingSaveId')] });
   const frozenIds = await queryFrozenLoginIds(conn, id);
   if (frozenIds.length > 0) {
+    beforeWrite();
     const unfreezeResult = await conn.sobject('UserLogin').update(
       frozenIds.map((loginId) => ({ Id: loginId, IsFrozen: false })),
       { allOrNone: false }
@@ -209,7 +220,7 @@ export const applySavedPlan = async (options: {
     if (unfreezeErrors.length > 0) plan.errors.push(...unfreezeErrors);
     else plan.actions.push('unfrozen');
   }
-  await applyAssignments(conn, id, plan.effectivePersona, refs, false, plan.actions, plan.errors);
+  await applyAssignments(conn, id, plan.effectivePersona, refs, false, plan.actions, plan.errors, beforeWrite);
   const status = plan.errors.length > 0 ? 'failed' : plan.existing ? 'updated' : 'created';
   return toUserResult(plan, status, { id });
 };

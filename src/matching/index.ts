@@ -117,14 +117,14 @@ const selectUserFields = (matchField: string): string[] => {
 
 const toExistingUser = (row: ExistingUser): ExistingUser => ({
   Id: row.Id,
-  IsActive: row.IsActive,
-  Name: row.Name,
-  Username: row.Username,
-  Email: row.Email,
-  ProfileId: row.ProfileId,
-  Profile: row.Profile,
-  UserRoleId: row.UserRoleId,
-  UserRole: row.UserRole,
+  ...(row.IsActive === undefined ? {} : { IsActive: row.IsActive }),
+  ...(row.Name === undefined ? {} : { Name: row.Name }),
+  ...(row.Username === undefined ? {} : { Username: row.Username }),
+  ...(row.Email === undefined ? {} : { Email: row.Email }),
+  ...(row.ProfileId === undefined ? {} : { ProfileId: row.ProfileId }),
+  ...(row.Profile === undefined ? {} : { Profile: row.Profile }),
+  ...(row.UserRoleId === undefined ? {} : { UserRoleId: row.UserRoleId }),
+  ...(row.UserRole === undefined ? {} : { UserRole: row.UserRole }),
 });
 
 const addRequestMatches = (

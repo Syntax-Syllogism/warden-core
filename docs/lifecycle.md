@@ -1,5 +1,10 @@
 # Lifecycle operations
 
+The public lifecycle command boundary is documented in
+[Callable command use cases](use-cases.md). This guide covers the underlying
+targeting, assignment, snapshot, and rendering behavior used by those
+commands.
+
 Lifecycle workflows target existing users and return structured results. They
 share the target-selection pipeline in `src/lifecycle/targeting.ts`:
 
@@ -16,15 +21,15 @@ the source path and line where available.
 
 ## Freeze and unfreeze
 
-`executeFreezeToggle` uses `FREEZE` or `UNFREEZE` to update `UserLogin.IsFrozen`.
-Already-correct users are unchanged; dry runs report planned actions without
-DML. Live writes use partial-success handling, so each user's result can be
-changed or failed independently. Interactive callers supply confirmation and
-warning behavior; core returns strings and result data rather than printing.
+The `freeze` and `unfreeze` use cases use `FREEZE` or `UNFREEZE` to update
+`UserLogin.IsFrozen`. Their `plan()` methods report planned actions without
+DML; `apply()` uses partial-success handling, so each user's result can be
+changed or failed independently. Callers supply confirmation; core returns
+result data rather than printing.
 
 ## Strip
 
-`executeStrip` plans and optionally applies cleanup for each resolved user. The
+The `strip` use case plans and applies cleanup for each resolved user. The
 default categories are:
 
 - non-profile-owned Permission Set assignments;

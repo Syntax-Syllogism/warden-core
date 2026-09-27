@@ -90,10 +90,12 @@ const recordOutcome = (
 const runPartitionedDml = async (
   writes: PendingWrite[],
   operation: (payloads: JsonRecord[]) => Promise<SaveResult | SaveResult[]>,
-  resultsByPlanId: Map<string, RelatedRecordResult[]>
+  resultsByPlanId: Map<string, RelatedRecordResult[]>,
+  beforeBatch: () => void = (): void => undefined
 ): Promise<void> => {
   const partitions = batch(writes, RELATED_DML_CHUNK_SIZE);
   for (const partition of partitions) {
+    beforeBatch();
     // Ordered requests: each partition is at most 200 records, matching the User save shape.
     // eslint-disable-next-line no-await-in-loop
     const saveResults = asArray(await operation(partition.map((write) => write.payload)));
@@ -110,7 +112,8 @@ const runPartitionedDml = async (
 export const applyRelatedPhase = async (
   conn: Connection,
   entries: RelatedApplyEntry[],
-  phase: 'after'
+  phase: 'after',
+  beforeBatch: () => void = (): void => undefined
 ): Promise<Map<string, RelatedRecordResult[]>> => {
   const resultsByPlanId = new Map<string, RelatedRecordResult[]>();
   const writes: PendingWrite[] = [];
@@ -148,7 +151,8 @@ export const applyRelatedPhase = async (
       await runPartitionedDml(
         creates,
         (payloads) => conn.sobject(sobject).create(payloads, { allOrNone: false }) as Promise<SaveResult[]>,
-        resultsByPlanId
+        resultsByPlanId,
+        beforeBatch
       );
     }
     if (updates.length > 0) {
@@ -158,7 +162,8 @@ export const applyRelatedPhase = async (
           conn.sobject(sobject).update(payloads as Array<JsonRecord & { Id: string }>, { allOrNone: false }) as Promise<
             SaveResult[]
           >,
-        resultsByPlanId
+        resultsByPlanId,
+        beforeBatch
       );
     }
     /* eslint-enable no-await-in-loop */

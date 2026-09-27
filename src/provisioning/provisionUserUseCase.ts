@@ -92,7 +92,6 @@ export type ProvisionUserRequest = {
   personasSupplied?: boolean;
   relatedDoc?: JsonRecord;
   relatedPath?: string;
-  acknowledgeWarnings?: (warnings: string[]) => Promise<void>;
 };
 const message = provisioningMessage;
 
@@ -294,11 +293,7 @@ export class ProvisionUserUseCase {
           })
         : Promise.resolve<RelatedPreflightResult>(emptyPreflightResult()),
     ]);
-    // Ineligible relationships join the same warning list, so operators still see exactly
-    // one confirmation and declining exits before any DML.
     refs.warnings.push(...preflight.warnings);
-    // TODO(wdc-command-use-cases): replace this prompt-shaped callback with plan/apply.
-    if (refs.warnings.length > 0) await request.acknowledgeWarnings?.(refs.warnings);
 
     const relatedPlansByOrder = catalog
       ? await buildRelatedPlans({ conn, users: validUsers, catalog, preflight, userFieldMap: fieldMap, message })

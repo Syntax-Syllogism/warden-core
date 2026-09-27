@@ -1,11 +1,16 @@
 # Access auditing
 
+The public `access.run()` orchestration is documented in
+[Callable command use cases](use-cases.md). The lower-level resolver described
+below remains useful when a caller already has a validated target and user.
+
 The access domain answers the reverse question: which active-user grants give a
 specified user access to one Salesforce target? The workflow validates a target
 against the org, then resolves the user's Profile, Permission Set, and
 Permission Set Group grants into a `UserAccessResult`.
 
-The public entry point is `resolveReverseAccess(connection, user, target)`.
+The lower-level entry point is `resolveReverseAccess(connection, user, target)`;
+the public command use case is `access.run(connection, options)`.
 `user` is `{ Id, name, username }`; callers normally obtain `target` by using
 the matching validator in `src/access/targetValidation.ts`. The resolver
 returns rows with the user identity, assignment/source provenance, typed access
@@ -48,4 +53,3 @@ reported as a warning because it is not exposed as a clean
 Expected failures are `AccessError`/`UserAccessError` instances. Consumers
 should branch on the stable `code`, not on English message text; unexpected
 query failures are wrapped as `errorAccessQueryFailed`.
-

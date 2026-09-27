@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "definitions": {
+    "personas": { "personas": { "support": { "permissionSets": ["Missing_Set"] } } },
+    "users": { "users": [{ "userKey": "unresolved-user", "userId": "005000000000005AAA", "personas": ["support"] }] }
+  },
+  "orgState": {
+    "permissionSets": [],
+    "permissionSetGroups": [],
+    "groups": [],
+    "permissionSetAssignments": [],
+    "groupMembers": []
+  },
+  "expectedPlan": [
+    { "userKey": "unresolved-user", "userId": "005000000000005AAA", "category": "PermissionSet", "action": "unresolved", "status": "unmanaged", "detail": "Missing_Set", "error": "Unresolved PermissionSet reference \"Missing_Set\"." }
+  ]
+}

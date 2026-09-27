@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "definitions": {
+    "personas": {
+      "personas": {
+        "ops": { "queues": ["Z_Queue"], "permissionSets": ["Zeta_Access", "Alpha_Access"] },
+        "sales": { "publicGroups": ["A_Group"] }
+      }
+    },
+    "users": {
+      "users": [
+        { "userKey": "zulu", "userId": "005000000000008AAA", "personas": ["ops"] },
+        { "userKey": "alpha", "userId": "005000000000009AAA", "personas": ["sales", "ops"] }
+      ]
+    }
+  },
+  "orgState": {
+    "permissionSets": [
+      { "id": "0PS000000000008AAA", "name": "Zeta_Access", "label": "Zeta Access" },
+      { "id": "0PS000000000009AAA", "name": "Alpha_Access", "label": "Alpha Access" }
+    ],
+    "permissionSetGroups": [],
+    "groups": [
+      { "id": "00G000000000004AAA", "developerName": "Z_Queue", "label": "Z Queue", "type": "Queue" },
+      { "id": "00G000000000005AAA", "developerName": "A_Group", "label": "A Group", "type": "Regular" }
+    ],
+    "permissionSetAssignments": [],
+    "groupMembers": []
+  },
+  "expectedPlan": [
+    { "userKey": "alpha", "userId": "005000000000009AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Alpha Access", "error": "" },
+    { "userKey": "alpha", "userId": "005000000000009AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Zeta Access", "error": "" },
+    { "userKey": "alpha", "userId": "005000000000009AAA", "category": "PublicGroup", "action": "wouldAssign", "status": "planned", "detail": "A Group", "error": "" },
+    { "userKey": "alpha", "userId": "005000000000009AAA", "category": "Queue", "action": "wouldAssign", "status": "planned", "detail": "Z Queue", "error": "" },
+    { "userKey": "zulu", "userId": "005000000000008AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Alpha Access", "error": "" },
+    { "userKey": "zulu", "userId": "005000000000008AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Zeta Access", "error": "" },
+    { "userKey": "zulu", "userId": "005000000000008AAA", "category": "Queue", "action": "wouldAssign", "status": "planned", "detail": "Z Queue", "error": "" }
+  ]
+}

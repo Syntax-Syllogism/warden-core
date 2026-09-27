@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "definitions": {
+    "personas": { "personas": { "support": { "permissionSets": ["Support_User"] } } },
+    "users": { "users": [{ "userKey": "existing-user", "userId": "005000000000004AAA", "personas": ["support"] }] }
+  },
+  "orgState": {
+    "permissionSets": [{ "id": "0PS000000000006AAA", "name": "Support_User", "label": "Support User" }],
+    "permissionSetGroups": [],
+    "groups": [],
+    "permissionSetAssignments": [{ "id": "0PA000000000001AAA", "userId": "005000000000004AAA", "permissionSetId": "0PS000000000006AAA", "permissionSetGroupId": null }],
+    "groupMembers": []
+  },
+  "expectedPlan": []
+}

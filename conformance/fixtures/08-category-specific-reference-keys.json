@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "definitions": {
+    "personas": {
+      "personas": {
+        "category-keys": {
+          "permissionSets": ["Perm_Name", "Perm_DeveloperName"],
+          "permissionSetGroups": ["Psg_DeveloperName", "Psg_Name"],
+          "publicGroups": ["Group_DeveloperName", "Group_Name"],
+          "queues": ["Queue_DeveloperName", "Queue_Name"]
+        }
+      }
+    },
+    "users": {
+      "users": [{ "userKey": "category-keys-user", "userId": "005000000000008AAA", "personas": ["category-keys"] }]
+    }
+  },
+  "orgState": {
+    "permissionSets": [
+      { "id": "0PS000000000008AAA", "name": "Perm_Name", "developerName": "Perm_DeveloperName", "label": "Permission Set" }
+    ],
+    "permissionSetGroups": [
+      { "id": "0PG000000000008AAA", "name": "Psg_Name", "developerName": "Psg_DeveloperName", "label": "Permission Set Group" }
+    ],
+    "groups": [
+      { "id": "00G000000000008AAA", "name": "Group_Name", "developerName": "Group_DeveloperName", "label": "Public Group", "type": "Regular" },
+      { "id": "00G000000000009AAA", "name": "Queue_Name", "developerName": "Queue_DeveloperName", "label": "Queue", "type": "Queue" }
+    ],
+    "permissionSetAssignments": [],
+    "groupMembers": []
+  },
+  "expectedPlan": [
+    { "userKey": "category-keys-user", "userId": "005000000000008AAA", "category": "PermissionSet", "action": "unresolved", "status": "unmanaged", "detail": "Perm_DeveloperName", "error": "Unresolved PermissionSet reference \"Perm_DeveloperName\"." },
+    { "userKey": "category-keys-user", "userId": "005000000000008AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Permission Set", "error": "" },
+    { "userKey": "category-keys-user", "userId": "005000000000008AAA", "category": "PermissionSetGroup", "action": "wouldAssign", "status": "planned", "detail": "Permission Set Group", "error": "" },
+    { "userKey": "category-keys-user", "userId": "005000000000008AAA", "category": "PermissionSetGroup", "action": "unresolved", "status": "unmanaged", "detail": "Psg_Name", "error": "Unresolved PermissionSetGroup reference \"Psg_Name\"." },
+    { "userKey": "category-keys-user", "userId": "005000000000008AAA", "category": "PublicGroup", "action": "unresolved", "status": "unmanaged", "detail": "Group_Name", "error": "Unresolved PublicGroup reference \"Group_Name\"." },
+    { "userKey": "category-keys-user", "userId": "005000000000008AAA", "category": "PublicGroup", "action": "wouldAssign", "status": "planned", "detail": "Public Group", "error": "" },
+    { "userKey": "category-keys-user", "userId": "005000000000008AAA", "category": "Queue", "action": "wouldAssign", "status": "planned", "detail": "Queue", "error": "" },
+    { "userKey": "category-keys-user", "userId": "005000000000008AAA", "category": "Queue", "action": "unresolved", "status": "unmanaged", "detail": "Queue_Name", "error": "Unresolved Queue reference \"Queue_Name\"." }
+  ]
+}

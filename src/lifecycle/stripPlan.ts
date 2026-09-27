@@ -1,22 +1,15 @@
-import type { Connection } from '@salesforce/core';
-import type { UserFieldMeta } from '../provisioning/planner.js';
-import { confirmWithTimeout } from '../shared/prompt.js';
 import {
   groupMemberLabel,
   type GroupMemberRow,
-  loadAssignmentState,
   permissionSetAssignmentLabel,
   type PermissionSetAssignmentRow,
   permissionSetLicenseLabel,
   type PermissionSetLicenseAssignRow,
   type UserLoginRow,
 } from './assignmentState.js';
-import { failedResult, makeNotice, resolvedTargetResult, summarizeLifecycle } from './output.js';
-import { buildSnapshotFile, writeSnapshotFile } from './snapshotState.js';
-import { applyStripState } from './stripApply.js';
-import { buildTargetRequests, resolveTargets, type TargetSelectionFlags } from './targeting.js';
-import type { LabelBundle, LifecycleResult, LifecycleUserResult, ResolvedTargetUser, TargetError } from './types.js';
-import { LifecycleError } from './errors.js';
+import { makeNotice, resolvedTargetResult } from './output.js';
+import type { LabelBundle, LifecycleUserResult, ResolvedTargetUser } from './types.js';
+import type { TargetSelectionFlags } from './targeting.js';
 import { lifecycleMessage } from './messages.js';
 
 export type StripFlags = TargetSelectionFlags<string> & Record<string, unknown>;
@@ -263,73 +256,4 @@ export const buildTargetState = (options: {
   ];
 
   return { target, result, steps, hasDml: steps.length > 0 };
-};
-
-const buildStripResult = (
-  initialErrors: TargetError[],
-  states: StripTargetState[]
-): { results: LifecycleUserResult[]; states: StripTargetState[] } => {
-  const results = [...initialErrors.map(failedResult), ...states.map((state) => state.result)];
-  return { results, states };
-};
-
-export const executeStrip = async (options: {
-  conn: Connection;
-  fieldMap: Map<string, UserFieldMeta>;
-  flags: StripFlags;
-  interactive: boolean;
-  message?: (key: string, args?: string[]) => string;
-  confirm: (message: string) => Promise<boolean>;
-  warn: (message: string) => void;
-}): Promise<LifecycleResult> => {
-  const { conn, fieldMap, flags, interactive, message = lifecycleMessage, confirm, warn } = options;
-  const { requests, errors: requestErrors } = await buildTargetRequests(flags, fieldMap, {
-    invalidUserMatchField: (field) => message('errorInvalidUserMatchField', [field]),
-    invalidJson: (path, error) => message('errorInvalidJson', [path, error]),
-  });
-  const { targets, errors: resolutionErrors } = await resolveTargets(conn, requests, fieldMap);
-  const initialErrors = [...requestErrors, ...resolutionErrors];
-  const stateMaps = await loadAssignmentState(
-    conn,
-    targets.map((target) => target.Id)
-  );
-  const states = targets.map((target) =>
-    buildTargetState({
-      target,
-      loginRows: stateMaps.userLoginByUserId.get(target.Id) ?? [],
-      rows: {
-        psa: stateMaps.psaByUserId.get(target.Id) ?? [],
-        group: stateMaps.groupByUserId.get(target.Id) ?? [],
-        psl: stateMaps.pslByUserId.get(target.Id) ?? [],
-      },
-      flags,
-      message,
-    })
-  );
-  const { results } = buildStripResult(initialErrors, states);
-
-  const hasDml = states.some((state) => state.hasDml);
-  if (!isFlagSet(flags, 'dry-run') && hasDml && !isFlagSet(flags, 'no-prompt') && interactive) {
-    const { confirmed, timedOut } = await confirmWithTimeout(confirm, message('promptContinue'));
-    if (!confirmed) {
-      if (timedOut) warn(message('warningPromptTimeout'));
-      throw new LifecycleError('errorPromptDeclined', message('errorPromptDeclined'));
-    }
-  }
-
-  if (typeof flags.snapshot === 'string' && flags.snapshot.length > 0) {
-    const targetOrg = flags['target-org'] as { getUsername?: () => string } | undefined;
-    const snapshot = await buildSnapshotFile(conn, targets, stateMaps, targetOrg?.getUsername?.());
-    await writeSnapshotFile(flags.snapshot, snapshot);
-    for (const state of states) state.result.actions.push(makeNotice('snapshotWritten'));
-  }
-
-  if (!isFlagSet(flags, 'dry-run')) {
-    await states.reduce<Promise<void>>(
-      (chain, state) => chain.then(() => applyStripState(conn, state)),
-      Promise.resolve()
-    );
-  }
-
-  return { summary: summarizeLifecycle(results), users: results };
 };
