@@ -4,8 +4,8 @@ import type { UiHint } from './useCase.js';
 const field = <T extends z.ZodType>(schema: T, ui: UiHint): T =>
   (schema as T & { meta: (value: unknown) => T }).meta({ ui });
 
-const file = (label: string, fileFilter: UiHint['fileFilter'] = 'json'): z.ZodString =>
-  field(z.string(), { kind: 'file', label, fileFilter });
+const file = (label: string, fileFilter: UiHint['fileFilter'] = 'json', extra: Partial<UiHint> = {}): z.ZodString =>
+  field(z.string(), { kind: 'file', label, fileFilter, ...extra });
 
 const text = (label: string, extra: Partial<UiHint> = {}): z.ZodString =>
   field(z.string(), { kind: 'string', label, ...extra });
@@ -19,8 +19,8 @@ const document = (label: string): z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUn
   field(z.record(z.string(), z.unknown()).optional(), { kind: 'string', label });
 
 const targetFields = {
-  user: text('User match (field:value)', { exclusiveGroup: 'user' }).optional(),
-  usersPath: file('Users definition file', 'json-or-csv').optional(),
+  user: text('User match (field:value)', { exclusiveGroup: 'userTarget' }).optional(),
+  usersPath: file('Users definition file', 'json-or-csv', { exclusiveGroup: 'userTarget' }).optional(),
   usersDoc: document('Users definition document').optional(),
   externalId: text('External ID field', { dependsOn: 'usersPath' }).optional(),
   inputFormat: enumValue(['json', 'csv'], 'Input format').optional(),
@@ -62,11 +62,11 @@ export const stripOptionsSchema = z.object({
 export const diffOptionsSchema = z.object({
   mode: enumValue(['persona', 'user'], 'Diff mode'),
   verify: boolean('Verify conformance').default(false),
-  user: text('User match (field:value)', { exclusiveGroup: 'user' }).optional(),
+  user: text('User match (field:value)', { exclusiveGroup: 'userTarget' }).optional(),
   against: text('Reference user match (field:value)', { dependsOn: 'user' }).optional(),
-  usersPath: file('Users definition file', 'json-or-csv').optional(),
+  usersPath: file('Users definition file', 'json-or-csv', { exclusiveGroup: 'userTarget' }).optional(),
   usersDoc: document('Users definition document').optional(),
-  personasPath: file('Personas definition file').optional(),
+  personasPath: file('Personas definition file', 'json', { dependsOn: 'usersPath' }).optional(),
   personasDoc: document('Personas definition document').optional(),
   externalId: text('External ID field', { dependsOn: 'usersPath' }).optional(),
   inputFormat: enumValue(['json', 'csv'], 'Input format').optional(),

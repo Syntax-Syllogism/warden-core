@@ -9,6 +9,7 @@ export { WardenError, isWardenError } from './errors.js';
 export { AccessError, UserAccessError } from './access/types.js';
 export {
   flattenAccessRow,
+  renderAccessResult,
   renderEnabledTable,
   renderFieldTable,
   renderObjectTable,
@@ -28,6 +29,7 @@ export {
   summarizeLifecycle,
 } from './lifecycle/output.js';
 export { buildSnapshotFile, readSnapshotFile, writeSnapshotFile } from './lifecycle/snapshotState.js';
+export { snapshotToLifecycleResult } from './lifecycle/snapshotOutput.js';
 export { buildTargetRequests, parseUserFlag, resolveTargetField, resolveTargets } from './lifecycle/targeting.js';
 export { executePersonaDiff, executeUserToUserDiff } from './lifecycle/userDiff.js';
 export { renderUserDiffCsv, renderUserDiffHuman } from './lifecycle/diffOutput.js';
@@ -38,6 +40,8 @@ export { runAssignmentCreates, runRecordUpdate } from './lifecycle/dmlRunner.js'
 export { ProvisioningError, DefinitionError } from './provisioning/errors.js';
 export { ProvisionUserUseCase } from './provisioning/provisionUserUseCase.js';
 export { readProvisionDefinitions } from './provisioning/definitionReader.js';
+export { renderProvisionHuman } from './provisioning/output.js';
+export { renderMessages, renderMessagesFor } from './renderMessages.js';
 
 export { RelatedRecordsError } from './relatedRecords/errors.js';
 
@@ -137,6 +141,7 @@ export type {
 export type { ProvisionResult } from './provisioning/provisionUserUseCase.js';
 export type { StripFlags } from './lifecycle/stripPlan.js';
 export type { UserDiffResult } from './lifecycle/userDiff.js';
+export type { MessageLookup } from './lifecycle/diffOutput.js';
 export type { UserConformanceVerdict } from './lifecycle/conformance.js';
 export type { UserSnapshotEntry } from './lifecycle/snapshotState.js';
 export type {

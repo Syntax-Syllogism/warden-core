@@ -68,5 +68,9 @@ planning result. The front end decides how to handle them before calling
 match message text.
 
 `renderProvisionCsv` emits one row per action, related-record result, or error.
+`renderProvisionHuman(result, personaSourceLabel?, lookup?)` renders a plan
+preview or apply result, including license shortfalls. Its default lookup uses
+the provision command's English summary text.
 Use `renderLifecycleCsv` and the other shared renderers for the corresponding
 workflow results.
+See [Human and CSV rendering](rendering.md) for lookup and output details.

@@ -17,5 +17,5 @@ and calculate `expectedPlan` according to the
 conformance test and normal package checks before committing.
 
 Fixtures contain no imports or executable code. They are shipped in the
-`@syntax-syllogism/warden-core` package for the Apex consumer to load without
-transformation.
+`@syntax-syllogism/warden-core` package so a potential future Apex consumer can
+load them without transformation.

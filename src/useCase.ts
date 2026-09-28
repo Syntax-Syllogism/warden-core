@@ -20,6 +20,7 @@ export type UiHint = {
   summary?: string;
   placeholder?: string;
   fileFilter?: 'json' | 'csv' | 'json-or-csv';
+  /** The caller asks for exactly one option in the group. */
   exclusiveGroup?: string;
   dependsOn?: string;
 };

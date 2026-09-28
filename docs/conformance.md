@@ -3,8 +3,8 @@
 The top-level `conformance/` directory is the versioned, engine-neutral
 executable specification for Warden's v1 persona reconciliation planner. The
 JSON fixtures are published with `@syntax-syllogism/warden-core` so the
-TypeScript planner and the Apex consumer can evaluate the same inputs and
-expected plans.
+TypeScript planner and any future engine (such as a possible Apex consumer)
+can evaluate the same inputs and expected plans.
 
 ## Fixture contract
 

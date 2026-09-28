@@ -80,6 +80,16 @@ describe('command use cases', () => {
     }
   });
 
+  it('groups lifecycle and diff user targets and orders persona input after the users file', () => {
+    for (const useCase of [freeze, unfreeze, strip, snapshot, diff]) {
+      const hints = uiHints(useCase.descriptor.optionsSchema);
+      expect(hints.user.exclusiveGroup).to.equal('userTarget');
+      expect(hints.usersPath.exclusiveGroup).to.equal('userTarget');
+    }
+    expect(uiHints(diff.descriptor.optionsSchema).personasPath.dependsOn).to.equal('usersPath');
+    expect(uiHints(diff.descriptor.optionsSchema).against.dependsOn).to.equal('user');
+  });
+
   it('rejects an already-aborted operation with the stable cancellation error', async () => {
     const controller = new AbortController();
     controller.abort();

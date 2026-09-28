@@ -54,6 +54,12 @@ in-memory documents for unsaved-buffer and non-filesystem callers.
 field without requiring a front end to inspect Zod metadata. Hints identify the
 field kind (`file`, `string`, `boolean`, or `enum`), label, file filter, and
 relationships such as mutually exclusive or dependent inputs.
+For an `exclusiveGroup`, the caller asks for exactly one option in that group;
+`dependsOn` identifies an input to collect first. These are UI hints, not
+cross-field schema validation. In freeze, unfreeze, strip, snapshot, and diff,
+`user` and `usersPath` share the `userTarget` group. Diff's `personasPath`
+depends on `usersPath`, and `against` depends on `user`. In-memory `usersDoc`
+and `personasDoc` are available even though they have no group/dependency hint.
 
 ## Command behavior
 

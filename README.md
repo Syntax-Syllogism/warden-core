@@ -1,8 +1,8 @@
 # warden-core
 
 Shared Warden engine: the user-lifecycle library behind the
-[`warden`](https://github.com/Syntax-Syllogism/warden) Salesforce CLI plugin,
-the Warden VS Code extension, and the Warden SFDX package.
+[`warden`](https://github.com/Syntax-Syllogism/warden) Salesforce CLI plugin
+and the Warden VS Code extension, with a possible future Warden SFDX package.
 
 warden-core is a plain Node/TypeScript library with no CLI framework
 dependency. Call its functions directly from a script, an editor extension, a
@@ -10,6 +10,7 @@ CI job, or any other Node codebase.
 
 The [domain guides](docs/) describe the implemented workflows and data
 contracts for [callable command use cases](docs/use-cases.md),
+[human and CSV rendering](docs/rendering.md),
 [access auditing](docs/access.md),
 [lifecycle operations](docs/lifecycle.md), [provisioning](docs/provisioning.md),
 [related records](docs/related-records.md), [user matching](docs/matching.md),
@@ -40,6 +41,9 @@ Requires Node.js 22 or later.
 | File-format schemas and parsers | Zod schemas, JSON-text validators, and inferred types for persona, users, related-catalog, and snapshot files. |
 | `conformanceFixtureSchema`, `planFromState` | The versioned fixture contract and pure v1 additive reconciliation planner. |
 | Lifecycle, access, provisioning, CSV, snapshot, and rendering functions | Framework-free domain operations used by Warden consumers. |
+| `renderMessages`, `renderMessagesFor(commandId)`, `MessageLookup` | Default English text for renderer keys, with command-specific summary wording for diff and provision. Callers can supply another lookup. |
+| `renderProvisionHuman`, `renderAccessResult` | Pure human output matching the CLI's provision and access displays. |
+| `snapshotToLifecycleResult` | Adapts a captured snapshot for `renderLifecycleResult` and `renderSnapshotCsv`. |
 
 ```ts
 import { isWardenError } from '@syntax-syllogism/warden-core';
@@ -101,7 +105,8 @@ artifact-generation workflow.
 
 The canonical conformance fixtures are published under
 [`conformance/`](conformance/README.md). They are the executable spec shared
-by the TypeScript and Apex planning engines.
+by the TypeScript planning engine and any future engine, such as a potential
+Apex implementation.
 
 ## Versioning
 

@@ -62,3 +62,9 @@ snapshot parser are documented in [File-format schemas](spec-schemas.md).
 Lifecycle errors are `LifecycleError` instances with stable codes. Rendering
 helpers in `src/lifecycle` and `src/shared/output.ts` return strings; callers
 choose where to display or save them.
+`snapshotToLifecycleResult(snapshotFile)` adapts a successful capture from
+`snapshot.run()` for `renderLifecycleResult` and `renderSnapshotCsv`. Use
+`renderMessages` for lifecycle output and `renderMessagesFor('diff')` for diff
+output; both can be replaced with another `MessageLookup`.
+See [Human and CSV rendering](rendering.md) for the renderer input map and
+lookup behavior.

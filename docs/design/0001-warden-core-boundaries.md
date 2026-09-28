@@ -9,20 +9,20 @@ All Warden logic lived inside the `warden` oclif plugin. The only way for
 another consumer to use it was to install the plugin and spawn `sf warden …`,
 which is what the Warden VS Code extension did: slow (a process start plus a
 plugin load per command), text-over-stdout only, and coupled to CLI flag names
-through a vendored oclif manifest. The Warden SFDX package needs the same
-specification (definition-file schemas, conformance fixtures) and had no way to
-share it.
+through a vendored oclif manifest. A possible future Warden SFDX package would
+need the same specification (definition-file schemas, conformance fixtures) and
+had no way to share it.
 
-warden-core is the shared engine for three front ends:
+warden-core is the shared engine for two front ends, with room for a third:
 
 | Consumer | How it uses warden-core |
 | --- | --- |
 | `warden` sf plugin | Imports the library; commands become thin adapters (flags, prompts, rendering). |
 | Warden VS Code extension | Imports the library in the extension host, instead of spawning the CLI. |
-| Warden SFDX package | Consumes data only (conformance fixtures as a static resource); Apex cannot import TypeScript. |
+| Warden SFDX package (potential, future) | Would consume data only (conformance fixtures as a static resource); Apex cannot import TypeScript. |
 
-The design follows the `-core` library pattern used by SimplySF's
-`simply-plugins-core`, as a single package rather than a monorepo.
+The design follows the common `-core` library pattern for sf plugins, as a
+single package rather than a monorepo.
 
 ## Decisions
 
@@ -30,7 +30,7 @@ The design follows the `-core` library pattern used by SimplySF's
 | --- | --- |
 | D1 | warden-core holds the full domain library (every command workflow as a callable use case) plus the specification assets, not just the specification. |
 | D2 | One repository, one npm package: `@syntax-syllogism/warden-core`. Split into several packages only when a real consumer needs a subset. |
-| D3 | The SFDX package consumes warden-core as an exact-pinned devDependency and commits a generated static resource, with a CI check that it is in sync. |
+| D3 | If an SFDX package is built, it would consume warden-core as an exact-pinned devDependency and commit a generated static resource, with a CI check that it is in sync. |
 | D4 | Semantic versioning, and consumers pin exact versions. A change that rejects previously valid input or changes an expected plan is major. Versioned file formats carry a `schemaVersion`. |
 | D5 | Errors are typed: `WardenError` with a stable `code`, structured `data`, and default English text owned by warden-core. |
 | D6 | Each use case exports a zod options schema with UI hints. Front ends build their inputs from it; the CLI keeps its own flags and tests that they map onto the same options. |

@@ -39,7 +39,9 @@ org's describe data and rejects inactive or ambiguous record types.
 `reverseCsvColumns(type)` returns the CSV columns for a result. The access
 resolver itself does not print or write files; table and CSV rendering remains
 the caller's responsibility. `src/access/output.ts` contains the renderer
-helpers used by front ends.
+helpers used by front ends. `renderAccessResult(result, userLabel?)` composes
+the human summary and grant table, including the user-scoped empty state.
+See [Human and CSV rendering](rendering.md) for output details.
 
 ## Salesforce and failure behavior
 
