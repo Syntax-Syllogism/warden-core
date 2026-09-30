@@ -62,7 +62,7 @@ import {
   validatePersonaModes,
   type PersonaDefinition,
 } from './provisioning/planner.js';
-import { getExistingUsers } from './provisioning/provisionUserUseCase.js';
+import { addSourceContext, getExistingUsers, validationResultsFor } from './provisioning/provisionUserUseCase.js';
 import { calculateUserLicenseUsage, type UserLicenseUsage } from './provisioning/licenseUsage.js';
 import {
   applySavedPlan,
@@ -438,12 +438,12 @@ const publicProvisionResult = (result: OrderedUserResult): ProvisionResult['user
   ...(result.userName === undefined ? {} : { userName: result.userName }),
   ...(result.username === undefined ? {} : { username: result.username }),
   personas: result.personas,
-  matchedBy: result.matchedBy,
+  matchedBy: result.matchedBy ?? null,
   matchValue: result.matchValue,
   matched: result.matched,
   status: result.status,
   actions: result.actions,
-  errors: result.errors,
+  errors: addSourceContext(result.source, result.errors),
   ...(result.relatedRecords ? { relatedRecords: result.relatedRecords } : {}),
 });
 
@@ -516,7 +516,7 @@ const provisionPlan = async (
     definitions.usersDoc.users,
     personas,
     fieldMap,
-    definitions.personasSupplied,
+    options.personasSupplied ?? definitions.personasSupplied,
     {
       catalogSupplied: Boolean(catalog),
       names: new Set(Object.keys(catalog?.relationships ?? {})),
@@ -577,20 +577,7 @@ const provisionPlan = async (
     relatedPlansByOrder,
   });
   const licenses = await calculateUserLicenseUsage(conn, plans);
-  const validationResults: OrderedUserResult[] = entries
-    .filter(({ user }) => user.validationErrors?.length)
-    .map(({ user, order }) => ({
-      planId: `${order}:${user.inputKey}:${user.personas.join('+')}:validation`,
-      order,
-      key: user.inputKey,
-      personas: user.personas,
-      matchedBy: user.matchField ?? null,
-      matchValue: null,
-      matched: false,
-      status: 'failed' as const,
-      actions: [],
-      errors: user.validationErrors?.map((error) => lifecycleMessage(error.code, error.messageArgs)) ?? [],
-    }));
+  const validationResults = validationResultsFor(entries.filter(({ user }) => user.validationErrors?.length));
   const planned = await Promise.all(previewPlans.map((plan) => planDryRunResult({ conn, plan, refs })));
   const allPreviewResults = validationResults.concat(planned).sort((left, right) => left.order - right.order);
   const preview = {
@@ -648,7 +635,6 @@ const applyProvisionPlan = async (
       conn,
       outcome,
       refs,
-      message: (key) => key,
       beforeWrite: () => checkCancelled(ctx),
     });
     applied.push(outcomeResult);
@@ -658,7 +644,10 @@ const applyProvisionPlan = async (
     .sort((left, right) => left.order - right.order)
     .map(publicProvisionResult);
   endProgress(ctx);
-  return { summary: summarize(users, plan.warnings.length), users };
+  return {
+    summary: summarize(users, plan.warnings.length + plan.licenses.filter((license) => license.shortfall > 0).length),
+    users,
+  };
 };
 
 export const provision: WriteUseCase<ProvisionOptions, ProvisionPlan, ProvisionResult> = {

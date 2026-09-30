@@ -59,6 +59,38 @@ or an explicit input-format override, and list fields use the configured
 delimiter. In-memory documents avoid filesystem access for editor and test
 callers.
 
+`provision.plan()` accepts an optional `personasSupplied` boolean to override
+whether persona definitions are considered supplied during user validation.
+When omitted, this is inferred from the persona document or path. Adapters
+that obtain personas from another source can set it explicitly; it does not
+load definitions or make unknown persona names valid. This internal adapter
+option has no UI hint.
+
+## Plan and result data
+
+`ProvisionPlan` retains the live user plans, serialized reference maps,
+validation-failure rows, license usage, reference/preflight warnings, and a
+`preview`. It contains the source metadata needed to preserve CSV error
+prefixes after a JSON round trip. Applying it uses the retained state without
+recalculating license availability.
+
+The preview and apply result preserve input order and use the same public
+user-row shape. `matchedBy` is explicitly `null` when no match field is
+available. Validation-failure rows retain available identity and match values,
+but have `matched: false` because they never reached matching. CSV validation
+and save errors include a `path:line — ` prefix when source metadata is
+available. Expected provisioning failures use core's default English messages
+rather than raw message keys.
+
+The preview includes `licenses` and
+`permissionSetLicenses: { evaluated: false, note: 'not evaluated' }`; the apply
+result contains only `summary` and `users`. Both summary warning counts include
+the plan's reference/preflight warnings plus one warning per user-license
+entry with a positive shortfall. License details remain on the plan even
+though they are omitted from the apply result. The single-call
+`ProvisionUserUseCase.execute` calculates license usage only in dry-run mode,
+so its live summary does not include planned license shortfalls.
+
 ## Warnings and errors
 
 Missing Salesforce references and license shortfalls are warnings on the

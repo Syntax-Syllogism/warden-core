@@ -47,7 +47,7 @@ const provisionDefinitionMessages: DefinitionMessages = {
 };
 
 type JsonRecord = Record<string, unknown>;
-const addSourceContext = (source: CsvRowInfo | undefined, errors: string[]): string[] =>
+export const addSourceContext = (source: CsvRowInfo | undefined, errors: string[]): string[] =>
   source ? errors.map((error) => `${source.path}:${source.line} — ${error}`) : errors;
 
 export type ProvisionResult = {
@@ -111,7 +111,7 @@ const loadAndValidate = async (
   return { fieldMap, definitions };
 };
 
-const validationResultsFor = (
+export const validationResultsFor = (
   validationFailureUsers: Array<{ user: CanonicalizedUser; order: number }>
 ): OrderedUserResult[] =>
   validationFailureUsers.map(({ user, order }) => {

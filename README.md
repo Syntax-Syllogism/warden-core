@@ -68,11 +68,16 @@ const plan = await freeze.plan(connection, options, { onProgress });
 const result = await freeze.apply(connection, JSON.parse(JSON.stringify(plan)));
 ```
 
+Provision options accept `personasSupplied` to override whether persona definitions
+were supplied; this internal option has no UI hint. Provision previews and apply
+summaries count reference warnings and planned license shortfalls.
+
 ## Errors
 
 Errors are reported as `WardenError` instances (or area-specific subclasses).
 The `code` and the shape of `data` are part of the public API; the `message`
-text is not and may be reworded in any release.
+text is not and may be reworded in any release. Provision user-row errors retain
+CSV source path and line prefixes in both previews and apply results.
 
 | Code | Thrown by |
 | --- | --- |

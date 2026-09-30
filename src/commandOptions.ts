@@ -32,6 +32,7 @@ export const provisionOptionsSchema = z.object({
   usersDoc: document('Users definition document').optional(),
   personasPath: file('Personas definition file').optional(),
   personasDoc: document('Personas definition document').optional(),
+  personasSupplied: z.boolean().optional(),
   relatedPath: file('Related record definition file').optional(),
   relatedDoc: document('Related record definition document').optional(),
   externalId: text('External ID field', { dependsOn: 'usersPath' }).optional(),

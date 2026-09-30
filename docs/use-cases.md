@@ -42,7 +42,7 @@ in-memory documents for unsaved-buffer and non-filesystem callers.
 
 | Command | Options and selection rules |
 | --- | --- |
-| `provision` | User and persona paths or documents, optional related-record path/document, `externalId`, input format, CSV list delimiter, and `fuzzyUsername`. The plan exposes `licenses[].shortfall` for each user license; enforcing a fail-on-insufficient-license policy from that data is a caller/CLI concern, not a core option. |
+| `provision` | User and persona paths or documents, optional related-record path/document, `externalId`, input format, CSV list delimiter, and `fuzzyUsername`. Internal adapter option `personasSupplied` overrides persona-source presence during validation and has no UI hint; see [Provisioning](provisioning.md). The plan exposes `licenses[].shortfall` for each user license; enforcing a fail-on-insufficient-license policy from that data is a caller/CLI concern, not a core option. |
 | `freeze`, `unfreeze` | A `user` match (`field:value`) or a users definition path/document, plus external-id and CSV options. |
 | `strip` | The same user selection options, plus `noFreeze`, `noDeactivate`, and keep flags for permission sets, permission set groups, public groups, queues, and licenses. |
 | `diff` | Required `mode` (`persona` or `user`) and optional `verify`. User mode requires `user` and `against`; persona mode uses users/personas paths or documents and the matching input options. With `verify`, persona mode returns `UserConformanceVerdict[]`; user mode rejects verification. |

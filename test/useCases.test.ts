@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect } from 'chai';
 import sinon from 'sinon';
 import {
@@ -6,6 +9,8 @@ import {
   diff,
   freeze,
   provision,
+  ProvisionUserUseCase,
+  provisionOptionsSchema,
   restore,
   snapshot,
   strip,
@@ -76,7 +81,10 @@ describe('command use cases', () => {
     for (const descriptor of commandDescriptors) {
       const schema = descriptor.optionsSchema as unknown as { shape: Record<string, unknown> };
       const keys = Object.keys(schema.shape);
-      expect(Object.keys(uiHints(descriptor.optionsSchema as never))).to.have.members(keys);
+      const internalKeys = descriptor.id === 'provision' ? ['personasSupplied'] : [];
+      expect(Object.keys(uiHints(descriptor.optionsSchema as never))).to.have.members(
+        keys.filter((key) => !internalKeys.includes(key))
+      );
     }
   });
 
@@ -296,6 +304,147 @@ describe('command use cases', () => {
     expect(plan.preview.licenses).to.have.length(1);
     expect(plan.preview.licenses?.[0]?.shortfall).to.equal(1);
     expect(plan.preview.users[0].status).to.not.equal('failed');
+    expect(plan.preview.summary.warnings).to.equal(1);
+    const create = sinon.stub().resolves([{ success: true, id: '005new', errors: [] }]);
+    const result = await provision.apply(
+      { ...conn, sobject: sinon.stub().withArgs('User').returns({ create }) } as never,
+      JSON.parse(JSON.stringify(plan)) as ProvisionPlan
+    );
+    expect(result.summary.warnings).to.equal(1);
+    expect(result.users[0].status).to.equal('created');
+    expect(result).not.to.have.property('licenses');
+  });
+
+  for (const dryRun of [true, false]) {
+    it(`matches legacy provision JSON results (${dryRun ? 'dry run' : 'live'})`, async () => {
+      const conn = {
+        describe: sinon.stub().resolves({ fields: userFields }),
+        query: sinon.stub().callsFake(async (soql: string) => {
+          if (soql.includes('FROM User WHERE'))
+            return {
+              records: [
+                { Id: '005alice', Name: 'Alice Example', Username: 'alice@example.test', IsActive: true },
+                { Id: '005failed', Name: 'Failed Example', Username: 'failed@example.test', IsActive: true },
+              ],
+            };
+          if (soql.includes('FROM Profile WHERE') && soql.includes('00e000000000001'))
+            return { records: [{ Id: '00e000000000001', Name: 'Standard', UserLicenseId: 'lic1' }] };
+          if (soql.includes('FROM UserLicense WHERE'))
+            return {
+              records: [{ Id: 'lic1', MasterLabel: 'Standard', TotalLicenses: 10, UsedLicenses: 0, Status: 'Active' }],
+            };
+          return { records: [] };
+        }),
+        sobject: sinon
+          .stub()
+          .withArgs('User')
+          .returns({
+            create: sinon.stub().resolves([{ success: true, id: '005new', errors: [] }]),
+            update: sinon.stub().resolves([
+              { success: true, id: '005alice', errors: [] },
+              { success: false, errors: [{ message: 'Save rejected' }] },
+            ]),
+          }),
+      };
+      const options = {
+        usersDoc: {
+          users: [
+            { Username: 'alice@example.test', match: 'Username', personas: ['baseline'] },
+            { Username: 'failed@example.test', match: 'Username', personas: ['baseline'] },
+            {
+              Username: 'invalid@example.test',
+              FirstName: 'Invalid',
+              LastName: 'Example',
+              match: 'Username',
+              personas: ['unknown'],
+            },
+            {
+              Username: 'new@example.test',
+              FirstName: 'New',
+              LastName: 'Example',
+              Email: 'new@example.test',
+              TimeZoneSidKey: 'America/New_York',
+              LocaleSidKey: 'en_US',
+              EmailEncodingKey: 'UTF-8',
+              LanguageLocaleKey: 'en_US',
+              personas: ['baseline'],
+            },
+          ],
+        },
+        personasDoc: { personas: { baseline: { profile: '00e000000000001' }, unused: { profile: 'Missing' } } },
+        fuzzyUsername: false,
+      };
+      const plan = await provision.plan(conn as never, options);
+      expect(conn.sobject.called).to.equal(false);
+      const actual = dryRun
+        ? plan.preview
+        : await provision.apply(conn as never, JSON.parse(JSON.stringify(plan)) as ProvisionPlan);
+      const expected = await new ProvisionUserUseCase().execute({ connection: conn as never, ...options, dryRun });
+      expect(JSON.parse(JSON.stringify(actual))).to.deep.equal(JSON.parse(JSON.stringify(expected)));
+      expect(actual.users.map((user) => user.username)).to.deep.equal([
+        'alice@example.test',
+        'failed@example.test',
+        'invalid@example.test',
+        'new@example.test',
+      ]);
+      expect(actual.users[2].matchValue).to.equal('invalid@example.test');
+      expect(actual.users[3].matchedBy).to.equal(null);
+      expect(actual.summary.warnings).to.equal(1);
+      if (!dryRun) expect(actual.users[1].errors[0]).to.contain('Save rejected');
+    });
+  }
+
+  it('preserves CSV source prefixes for validation and save failures through JSON-cloned plans', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'warden-provision-source-'));
+    const usersPath = join(directory, 'users.csv');
+    const personasPath = join(directory, 'personas.json');
+    try {
+      await writeFile(
+        usersPath,
+        [
+          'Username,match,personas',
+          'alice@example.test,Username,baseline',
+          'invalid@example.test,Username,unknown',
+        ].join('\n')
+      );
+      await writeFile(personasPath, JSON.stringify({ personas: { baseline: {} } }));
+      const conn = {
+        ...(lifecycleConnection() as { query: sinon.SinonStub; describe: sinon.SinonStub }),
+        sobject: sinon
+          .stub()
+          .withArgs('User')
+          .returns({
+            update: sinon.stub().resolves([{ success: false, errors: [{ message: 'Save rejected' }] }]),
+          }),
+      };
+      const plan = await provision.plan(conn as never, { usersPath, personasPath, fuzzyUsername: false });
+      expect(plan.preview.users[1].errors[0]).to.contain(`${usersPath}:3 — `);
+      const result = await provision.apply(conn as never, JSON.parse(JSON.stringify(plan)) as ProvisionPlan);
+      expect(result.users[0].errors[0]).to.contain(`${usersPath}:2 — `);
+      expect(result.users[0].errors[0]).to.contain('Save rejected');
+      expect(result.users[1].errors).to.deep.equal(plan.preview.users[1].errors);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts the internal personasSupplied override without a UI hint', async () => {
+    expect(uiHints(provisionOptionsSchema)).not.to.have.property('personasSupplied');
+    const options = provisionOptionsSchema.parse({
+      usersDoc: { users: [{ Username: 'alice@example.test', match: 'Username', personas: ['unknown'] }] },
+      personasSupplied: true,
+    });
+    expect(options.personasSupplied).to.equal(true);
+    const conn = lifecycleConnection();
+    const plan = await provision.plan(conn, options);
+    const expected = await new ProvisionUserUseCase().execute({
+      connection: conn,
+      usersDoc: options.usersDoc,
+      personasSupplied: options.personasSupplied,
+      dryRun: true,
+    });
+    expect(JSON.parse(JSON.stringify(plan.preview))).to.deep.equal(JSON.parse(JSON.stringify(expected)));
+    expect(plan.preview.users[0].status).to.equal('failed');
   });
 
   it('preserves restore identity review, mismatch warnings, and unchanged no-op previews', async () => {
