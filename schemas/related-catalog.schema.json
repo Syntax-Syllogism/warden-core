@@ -16,7 +16,7 @@
                   "additionalProperties": false,
                   "properties": {
                     "from": {
-                      "description": "A source such as user.Department or user.Id.",
+                      "description": "A source such as user.Department, user.Id, or context.account.",
                       "type": "string"
                     }
                   },
@@ -43,6 +43,25 @@
             "propertyNames": {
               "type": "string"
             },
+            "type": "object"
+          },
+          "linkUser": {
+            "additionalProperties": false,
+            "description": "Before-phase field copied from the related record onto the User.",
+            "properties": {
+              "fromRelatedField": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "userField": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "userField",
+              "fromRelatedField"
+            ],
             "type": "object"
           },
           "match": {

@@ -1,9 +1,4 @@
-/**
- * Catalog, plan, and result shapes for `--related-def` relationships.
- *
- * `phase` is typed as the full union even though v1 only accepts `'after'`, so
- * adding `'before'` support later is a validator change rather than a type change.
- */
+/** Catalog, plan, and result shapes for related-record relationships. */
 export type {
   RelatedCatalog,
   RelationshipDef,
@@ -11,7 +6,7 @@ export type {
   RelationshipPhase,
   SourceExpr,
 } from '../spec/relatedCatalog.js';
-import type { RelationshipMode } from '../spec/relatedCatalog.js';
+import type { RelationshipMode, RelationshipPhase } from '../spec/relatedCatalog.js';
 
 /** A source expression parsed into the shape the resolver dispatches on. */
 export type ParsedSource =
@@ -22,8 +17,10 @@ export type ParsedSource =
 
 export type RelatedRecordPlan = {
   relationship: string;
-  phase: 'after';
+  phase: RelationshipPhase;
   sobject: string;
+  linkUser?: { userField: string; fromRelatedField: string };
+  linkValue?: unknown;
   matchField: string;
   matchValue?: string;
   existingId?: string;
@@ -38,13 +35,25 @@ export type RelatedRecordPlan = {
 
 export type RelatedRecordResult = {
   relationship: string;
-  phase: 'after';
+  phase: RelationshipPhase;
   sobject: string;
   recordId?: string;
-  action: 'created' | 'updated' | 'matched' | 'skipped' | 'wouldCreate' | 'wouldUpdate' | 'wouldSkip';
+  action:
+    | 'created'
+    | 'updated'
+    | 'matched'
+    | 'skipped'
+    | 'wouldCreate'
+    | 'wouldUpdate'
+    | 'wouldSkip'
+    | 'deleted'
+    | 'deleteFailed';
   status: 'applied' | 'planned' | 'skipped' | 'failed';
   detail?: string;
   error?: string;
 };
 
 export type RelatedMessage = (key: string, args?: string[]) => string;
+
+/** Internal ownership marker for compensating deletes; omitted from public results. */
+export type AppliedRelatedRecordResult = RelatedRecordResult & { createdInThisRun?: boolean };

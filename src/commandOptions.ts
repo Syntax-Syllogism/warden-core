@@ -33,6 +33,7 @@ export const provisionOptionsSchema = z.object({
   personasPath: file('Personas definition file').optional(),
   personasDoc: document('Personas definition document').optional(),
   personasSupplied: z.boolean().optional(),
+  cleanupOnFailure: boolean('Delete related records created for failed users').default(false),
   relatedPath: file('Related record definition file').optional(),
   relatedDoc: document('Related record definition document').optional(),
   externalId: text('External ID field', { dependsOn: 'usersPath' }).optional(),
@@ -94,7 +95,9 @@ export const restoreOptionsSchema = z.object({
   snapshotDoc: document('Snapshot document').optional(),
 });
 
-export type ProvisionOptions = z.infer<typeof provisionOptionsSchema>;
+export type ProvisionOptions = Omit<z.infer<typeof provisionOptionsSchema>, 'cleanupOnFailure'> & {
+  cleanupOnFailure?: boolean;
+};
 export type FreezeOptions = z.infer<typeof freezeOptionsSchema>;
 export type UnfreezeOptions = z.infer<typeof unfreezeOptionsSchema>;
 export type StripOptions = z.infer<typeof stripOptionsSchema>;

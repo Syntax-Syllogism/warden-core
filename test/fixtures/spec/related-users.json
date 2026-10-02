@@ -1,1 +1,20 @@
-{ "users": [{ "related": ["employee"], "FederationIdentifier": "E-9981" }] }
+{
+  "users": [
+    {
+      "related": ["employee"],
+      "FederationIdentifier": "E-9981",
+      "relatedContext": {
+        "account": {
+          "lookup": {
+            "sobject": "Account",
+            "field": "External_Id__c",
+            "value": {
+              "value": "company"
+            }
+          }
+        },
+        "enabled": false
+      }
+    }
+  ]
+}

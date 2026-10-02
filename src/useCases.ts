@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getResolver } from './access/resolvers/index.js';
 import { resolveReverseAccess } from './access/reverse.js';
 import type { UserAccessResult, ValidatedAccessTarget } from './access/types.js';
-import { describeUserFields } from './shared/userFields.js';
+import { describeUserFields, type SobjectDescribeCache } from './shared/userFields.js';
 import { parseUserFlag, resolveTargetField, resolveTargets, extractDefTargets } from './lifecycle/targeting.js';
 import { lifecycleMessage } from './lifecycle/messages.js';
 import { LifecycleError } from './lifecycle/errors.js';
@@ -71,8 +71,9 @@ import {
   markRelatedUnapplied,
 } from './provisioning/userSave.js';
 import { runRelatedPreflight, emptyPreflightResult, type RelatedPreflightResult } from './relatedRecords/preflight.js';
-import { applyRelatedPhase } from './relatedRecords/apply.js';
-import { buildRelatedPlans } from './relatedRecords/plan.js';
+import { cleanupProvisionFailures, publicRelatedResults } from './relatedRecords/cleanup.js';
+import { applyRelatedPhase, applyBeforeUserSaves } from './relatedRecords/apply.js';
+import { buildRelatedPlans, warnRelatedProfileLicenses } from './relatedRecords/plan.js';
 import { assertValidRelatedCatalog } from './relatedRecords/catalog.js';
 import type { RelatedRecordPlan } from './relatedRecords/types.js';
 import { deriveMyDomain } from './provisioning/planner.js';
@@ -424,6 +425,7 @@ export const snapshot: ReadUseCase<SnapshotOptions, UserSnapshotFile> = {
 };
 
 export type ProvisionPlan = {
+  cleanupOnFailure?: boolean;
   plans: UserPlan[];
   refs: SerializedRefs;
   validationResults: OrderedUserResult[];
@@ -444,7 +446,7 @@ const publicProvisionResult = (result: OrderedUserResult): ProvisionResult['user
   status: result.status,
   actions: result.actions,
   errors: addSourceContext(result.source, result.errors),
-  ...(result.relatedRecords ? { relatedRecords: result.relatedRecords } : {}),
+  ...(result.relatedRecords ? { relatedRecords: publicRelatedResults(result.relatedRecords) } : {}),
 });
 
 type SerializedRefs = Omit<
@@ -506,7 +508,8 @@ const provisionPlan = async (
     fuzzyUsername: options.fuzzyUsername,
     dryRun: false,
   } as const;
-  const fieldMap = await describeUserFields(conn);
+  const describeCache: SobjectDescribeCache = new Map();
+  const fieldMap = await describeUserFields(conn, describeCache);
   const definitions = await resolveDefinitions(input, fieldMap);
   const personas = definitions.personasDoc.personas as Record<string, PersonaDefinition>;
   validatePersonaModes(personas);
@@ -543,7 +546,8 @@ const provisionPlan = async (
         conn,
         catalog,
         selected: [...new Set(validUsers.flatMap(({ user }) => user.related ?? []))],
-        cache: new Map(),
+        cache: describeCache,
+        userFieldMap: fieldMap,
       })
     : emptyPreflightResult();
   refs.warnings.push(...preflight.warnings);
@@ -554,6 +558,7 @@ const provisionPlan = async (
         catalog,
         preflight,
         userFieldMap: fieldMap,
+        cache: describeCache,
       })
     : undefined;
   const plans = buildUserPlans({
@@ -566,6 +571,7 @@ const provisionPlan = async (
     dryRun: false,
     relatedPlansByOrder,
   });
+  await warnRelatedProfileLicenses(conn, plans, refs.warnings);
   const previewPlans = buildUserPlans({
     validUsers,
     refs,
@@ -589,7 +595,15 @@ const provisionPlan = async (
     licenses,
     permissionSetLicenses: { evaluated: false, note: 'not evaluated' },
   } as ProvisionResult;
-  return { plans, refs: serializeRefs(refs), validationResults, licenses, preview, warnings: refs.warnings };
+  return {
+    cleanupOnFailure: options.cleanupOnFailure ?? false,
+    plans,
+    refs: serializeRefs(refs),
+    validationResults,
+    licenses,
+    preview,
+    warnings: refs.warnings,
+  };
 };
 
 const applyProvisionPlan = async (
@@ -600,6 +614,7 @@ const applyProvisionPlan = async (
   startProgress(ctx, 'apply');
   const refs = deserializeRefs(plan.refs);
   checkCancelled(ctx);
+  await applyBeforeUserSaves(conn, plan.plans, () => checkCancelled(ctx));
   const outcomes = await executeBulkUserSaves(conn, plan.plans, () => checkCancelled(ctx));
   const invalid = plan.plans
     .filter((item) => item.errors.length > 0)
@@ -625,7 +640,14 @@ const applyProvisionPlan = async (
   );
   for (const outcome of saved) {
     const results = related.get(outcome.plan.planId);
-    if (results) outcome.plan.relatedResults = results;
+    if (results) {
+      outcome.plan.relatedResults = (outcome.plan.relatedResults ?? []).concat(results);
+      outcome.plan.errors.push(
+        ...results
+          .filter((result) => result.status === 'failed' && result.error)
+          .map((result) => result.error as string)
+      );
+    }
   }
   const applied: OrderedUserResult[] = [];
   for (const outcome of saved) {
@@ -638,6 +660,15 @@ const applyProvisionPlan = async (
       beforeWrite: () => checkCancelled(ctx),
     });
     applied.push(outcomeResult);
+  }
+  checkCancelled(ctx);
+  if (plan.cleanupOnFailure) {
+    await cleanupProvisionFailures(
+      conn,
+      plan.plans,
+      invalid.concat(failures, applied),
+      saved.map((outcome) => outcome.plan.planId)
+    );
   }
   const users = plan.validationResults
     .concat(invalid, failures, applied)

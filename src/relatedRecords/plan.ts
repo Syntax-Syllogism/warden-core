@@ -1,15 +1,16 @@
 import type { Connection } from '@salesforce/core';
 import type { CanonicalizedUser, UserFieldMeta, ValidationError } from '../provisioning/planner.js';
-import { esc, soqlIn } from '../shared/sfUtils.js';
+import { soqlIn } from '../shared/sfUtils.js';
+import type { SobjectDescribeCache, SobjectDescribeInfo } from '../shared/userFields.js';
 import type { RelatedPreflightResult } from './preflight.js';
-import { resolveSource } from './sources.js';
+import { resolveSource, parseSource } from './sources.js';
 import type { RelatedCatalog, RelatedMessage, RelatedRecordPlan, RelationshipDef } from './types.js';
+import { matchQueryBatches } from './queries.js';
+import { resolveRelatedContext } from './context.js';
 import { relatedRecordsMessage } from './messages.js';
 
 /** Salesforce accepts at most 200 records per create/update request. */
 export const RELATED_DML_CHUNK_SIZE = 200;
-const MATCH_QUERY_CHUNK_SIZE = 200;
-const MATCH_QUERY_MAX_LENGTH = 18_000;
 
 type ExistingRelatedRecord = Record<string, unknown> & { Id: string; RecordTypeId?: string | null };
 
@@ -38,26 +39,6 @@ const isEmptyExistingValue = (value: unknown): boolean => value === null || valu
 const canonicalFieldName = (field: string, fieldMap: Map<string, UserFieldMeta> | undefined): string =>
   fieldMap?.get(field.toLowerCase())?.name ?? field;
 
-/** Split IN-list values at Salesforce's count and query-text limits. */
-const matchQueryBatches = (values: string[], prefix: string): string[][] => {
-  const batches: string[][] = [];
-  let current: string[] = [];
-  let currentLength = prefix.length + 1; // Closing parenthesis.
-  for (const value of values) {
-    const renderedLength = `'${esc(value)}'`.length;
-    const nextLength = currentLength + (current.length > 0 ? 1 : 0) + renderedLength;
-    if (current.length > 0 && (current.length === MATCH_QUERY_CHUNK_SIZE || nextLength > MATCH_QUERY_MAX_LENGTH)) {
-      batches.push(current);
-      current = [];
-      currentLength = prefix.length + 1;
-    }
-    current.push(value);
-    currentLength += (current.length > 1 ? 1 : 0) + renderedLength;
-  }
-  if (current.length > 0) batches.push(current);
-  return batches;
-};
-
 const toErrorMessage = (message: RelatedMessage, error: ValidationError): string =>
   message(error.code, error.messageArgs);
 
@@ -66,6 +47,7 @@ const selectFieldsFor = (defs: RelationshipDef[], fieldMap: Map<string, UserFiel
   if (fieldMap?.has('recordtypeid')) names.add('RecordTypeId');
   for (const def of defs) {
     names.add(canonicalFieldName(def.match.field, fieldMap));
+    if (def.linkUser) names.add(canonicalFieldName(def.linkUser.fromRelatedField, fieldMap));
     for (const field of Object.keys(def.fields)) names.add(canonicalFieldName(field, fieldMap));
   }
   return [...names];
@@ -73,7 +55,8 @@ const selectFieldsFor = (defs: RelationshipDef[], fieldMap: Map<string, UserFiel
 
 const skippedPlan = (relationship: string, def: RelationshipDef): RelatedRecordPlan => ({
   relationship,
-  phase: 'after',
+  phase: def.phase,
+  ...(def.linkUser ? { linkUser: def.linkUser } : {}),
   sobject: def.sobject,
   matchField: def.match.field,
   fields: {},
@@ -214,7 +197,13 @@ const resolveConfiguredFields = (options: {
   const pendingUserIdFields: string[] = [];
   const errors: string[] = [];
   for (const [fieldName, expr] of Object.entries(def.fields)) {
-    const resolved = resolveSource(expr, { relationship, fieldName, userFields: user.fields, userFieldMap });
+    const resolved = resolveSource(expr, {
+      relationship,
+      fieldName,
+      userFields: user.fields,
+      userFieldMap,
+      relatedContext: user.relatedContext,
+    });
     if (resolved.error) errors.push(toErrorMessage(message, resolved.error));
     else if (resolved.pending) pendingUserIdFields.push(canonicalFieldName(fieldName, targetFieldMap));
     else fields[canonicalFieldName(fieldName, targetFieldMap)] = resolved.value;
@@ -242,6 +231,13 @@ const finalizePlan = (options: {
     return;
   }
   const existing = matches[0];
+  if (def.linkUser) {
+    plan.linkUser = {
+      userField: canonicalFieldName(def.linkUser.userField, userFieldMap),
+      fromRelatedField: canonicalFieldName(def.linkUser.fromRelatedField, targetFieldMap),
+    };
+    if (existing) plan.linkValue = existing[plan.linkUser.fromRelatedField];
+  }
   const resolved = resolveConfiguredFields({
     relationship: plan.relationship,
     def,
@@ -310,8 +306,26 @@ const applyCollisionCheck = (
   }
 };
 
+const applyLinkConflictCheck = (plansByOrder: Map<number, RelatedRecordPlan[]>, message: RelatedMessage): void => {
+  for (const plans of plansByOrder.values()) {
+    const writers = new Map<string, RelatedRecordPlan[]>();
+    for (const plan of plans) {
+      if (plan.phase !== 'before' || !plan.linkUser) continue;
+      const field = plan.linkUser.userField.toLowerCase();
+      writers.set(field, [...(writers.get(field) ?? []), plan]);
+    }
+    for (const [field, claims] of writers) {
+      if (claims.length < 2) continue;
+      for (const plan of claims) {
+        plan.status = 'failed';
+        plan.errors.push(message('errorConflictingLinkUser', [field]));
+      }
+    }
+  }
+};
+
 /**
- * Build every user's `after`-phase related-record plans for the batch.
+ * Build every user's related-record plans for both phases across the batch.
  *
  * Matching is a read, so this is safe in a dry run; the returned plans carry no DML.
  */
@@ -322,12 +336,42 @@ export const buildRelatedPlans = async (options: {
   preflight: RelatedPreflightResult;
   userFieldMap: Map<string, UserFieldMeta>;
   message?: RelatedMessage;
+  cache?: SobjectDescribeCache;
 }): Promise<Map<number, RelatedRecordPlan[]>> => {
   const { conn, users, catalog, preflight, userFieldMap, message = relatedRecordsMessage } = options;
-  const { pending, plansByOrder } = resolveMatchValues({ users, catalog, preflight, userFieldMap, message });
+  const contexts = await resolveRelatedContext({
+    conn,
+    users,
+    catalog,
+    userFieldMap,
+    cache: options.cache ?? new Map<string, SobjectDescribeInfo>(),
+    message,
+  });
+  const resolvedUsers = users.map(({ user, order }) => ({
+    order,
+    user: { ...user, relatedContext: contexts.get(order)?.values },
+  }));
+  const { pending, plansByOrder } = resolveMatchValues({
+    users: resolvedUsers,
+    catalog,
+    preflight,
+    userFieldMap,
+    message,
+  });
+  for (const [order, plans] of plansByOrder) {
+    for (const plan of plans) {
+      const errors = Object.values(catalog.relationships[plan.relationship].fields).flatMap((expr) => {
+        const parsed = 'from' in expr ? parseSource(expr.from) : undefined;
+        return parsed?.kind === 'context' ? contexts.get(order)?.errorsByName.get(parsed.name) ?? [] : [];
+      });
+      if (errors.length === 0) continue;
+      plan.status = 'failed';
+      plan.errors.push(...new Set(errors));
+    }
+  }
   if (plansByOrder.size === 0) return plansByOrder;
   const index = await queryExistingRecords(conn, pending, preflight);
-  const usersByOrder = new Map(users.map(({ user, order }) => [order, user]));
+  const usersByOrder = new Map(resolvedUsers.map(({ user, order }) => [order, user]));
 
   for (const [order, plans] of plansByOrder) {
     const user = usersByOrder.get(order);
@@ -351,5 +395,56 @@ export const buildRelatedPlans = async (options: {
     }
   }
   applyCollisionCheck(plansByOrder, catalog, preflight, message);
+  applyLinkConflictCheck(plansByOrder, message);
   return plansByOrder;
+};
+
+/** Profile/license diagnostics only; Salesforce decides ContactId eligibility. */
+export const warnRelatedProfileLicenses = async (
+  conn: Connection,
+  plans: Array<{
+    target: Record<string, unknown>;
+    existing?: { ProfileId?: string | null };
+    relatedPlans?: RelatedRecordPlan[];
+  }>,
+  warnings: string[],
+  message: RelatedMessage = relatedRecordsMessage
+): Promise<void> => {
+  const counts = new Map<string, number>();
+  for (const plan of plans) {
+    if (!plan.relatedPlans?.some((p) => p.phase === 'before' && p.linkUser?.userField.toLowerCase() === 'contactid'))
+      continue;
+    const id = plan.target.ProfileId ?? plan.existing?.ProfileId;
+    if (typeof id === 'string') counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  if (counts.size === 0) return;
+  const prefix = 'SELECT Id, Name, UserLicense.Name FROM Profile WHERE Id IN (';
+  try {
+    const profiles = (
+      await Promise.all(
+        matchQueryBatches([...counts.keys()], prefix).map(
+          async (chunk) =>
+            (
+              await conn.query<{ Id: string; Name: string; UserLicense?: { Name?: string } }>(
+                `${prefix}${soqlIn(chunk)})`
+              )
+            ).records
+        )
+      )
+    ).flat();
+    for (const profile of profiles)
+      warnings.push(
+        message('warningRelatedProfileLicense', [
+          profile.Name,
+          profile.UserLicense?.Name ?? 'unknown',
+          String(counts.get(profile.Id) ?? 0),
+        ])
+      );
+  } catch (error) {
+    warnings.push(
+      `Could not inspect Profile licenses for ContactId links: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
 };

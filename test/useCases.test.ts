@@ -1,3 +1,4 @@
+/* eslint-disable camelcase -- Salesforce API names in fixtures. */
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -244,6 +245,254 @@ describe('command use cases', () => {
     expect(JSON.parse(JSON.stringify(plan))).to.deep.equal(plan);
     expect(events).to.deep.equal(['start', 'complete']);
   });
+
+  for (const cleanupOnFailure of [true, false, undefined]) {
+    it(`cleans failed User saves only when opted in (${cleanupOnFailure})`, async () => {
+      const plan = await provision.plan(lifecycleConnection(), {
+        usersDoc: provisionDocument,
+        fuzzyUsername: false,
+        cleanupOnFailure,
+      });
+      expect(plan.cleanupOnFailure).to.equal(cleanupOnFailure ?? false);
+      const cloned = JSON.parse(JSON.stringify(plan)) as ProvisionPlan;
+      if (cleanupOnFailure === undefined) delete cloned.cleanupOnFailure;
+      cloned.plans[0].relatedPlans = [
+        {
+          relationship: 'contact',
+          phase: 'before',
+          sobject: 'Contact',
+          matchField: 'External_Id__c',
+          fields: { External_Id__c: 'alice' },
+          pendingUserIdFields: [],
+          mode: 'sync',
+          status: 'planned',
+          errors: [],
+          linkUser: { userField: 'ContactId', fromRelatedField: 'Id' },
+        },
+      ];
+      const create = sinon.stub().resolves([{ success: true, id: '003new', errors: [] }]);
+      const remove = sinon.stub().resolves([{ success: true, errors: [] }]);
+      const update = sinon.stub().resolves([{ success: false, errors: [{ message: 'User save blocked' }] }]);
+      const conn = {
+        sobject: sinon
+          .stub()
+          .callsFake((name: string) => (name === 'Contact' ? { create, delete: remove } : { update })),
+      };
+      const result = await provision.apply(conn as never, cloned);
+      expect(remove.called).to.equal(cleanupOnFailure === true);
+      expect(result.users[0].relatedRecords?.map((related) => related.action)).to.deep.equal(
+        cleanupOnFailure ? ['created', 'deleted'] : ['created']
+      );
+      expect(result.users[0].errors).to.deep.equal(['User save blocked']);
+      expect(result.summary.failed).to.equal(1);
+      expect(JSON.stringify(result)).not.to.contain('createdInThisRun');
+    });
+  }
+
+  it('cleans after creations on post-save failure while keeping saved User links and successful peers', async () => {
+    const plan = await provision.plan(lifecycleConnection(), {
+      usersDoc: provisionDocument,
+      fuzzyUsername: false,
+      cleanupOnFailure: true,
+    });
+    const contact = {
+      relationship: 'contact',
+      phase: 'before' as const,
+      sobject: 'Contact',
+      matchField: 'External_Id__c',
+      fields: { External_Id__c: 'alice' },
+      pendingUserIdFields: [],
+      mode: 'sync' as const,
+      status: 'planned' as const,
+      errors: [],
+      linkUser: { userField: 'ContactId', fromRelatedField: 'Id' },
+    };
+    const employee = {
+      ...contact,
+      relationship: 'employee',
+      phase: 'after' as const,
+      sobject: 'Employee__c',
+      linkUser: undefined,
+    };
+    plan.plans[0].relatedPlans = [contact, employee];
+    plan.plans[0].effectivePersona = { permissionSets: ['missing'] };
+    plan.refs.permissionSetIdsByRef.missing = '0PSmissing';
+    plan.plans.push({
+      ...plan.plans[0],
+      planId: 'peer',
+      order: 1,
+      key: 'peer',
+      target: { ...plan.plans[0].target },
+      effectivePersona: {},
+      relatedPlans: [{ ...employee, fields: { External_Id__c: 'peer' } }],
+      errors: [],
+      actions: ['updated'],
+    });
+    const contactDelete = sinon.stub();
+    const employeeDelete = sinon.stub().resolves([{ success: true, errors: [] }]);
+    const conn = {
+      query: sinon.stub().resolves({ records: [] }),
+      sobject: sinon.stub().callsFake((name: string) => {
+        if (name === 'User')
+          return {
+            update: sinon.stub().resolves([
+              { success: true, id: '005user', errors: [] },
+              { success: true, id: '005peer', errors: [] },
+            ]),
+          };
+        if (name === 'PermissionSetAssignment')
+          return { create: sinon.stub().resolves([{ success: false, errors: [{ message: 'Assignment blocked' }] }]) };
+        if (name === 'Contact')
+          return {
+            create: sinon.stub().resolves([{ success: true, id: '003contact', errors: [] }]),
+            delete: contactDelete,
+          };
+        return {
+          create: sinon.stub().resolves([
+            { success: true, id: 'a01failed', errors: [] },
+            { success: true, id: 'a01peer', errors: [] },
+          ]),
+          delete: employeeDelete,
+        };
+      }),
+    };
+    const result = await provision.apply(conn as never, plan);
+    expect(result.users[0].status).to.equal('failed');
+    expect(result.users[1].status).to.equal('updated');
+    expect(contactDelete.called).to.equal(false);
+    expect(employeeDelete.calledOnceWith(['a01failed'], { allOrNone: false })).to.equal(true);
+    expect(result.users[0].relatedRecords?.map((related) => related.action)).to.deep.equal([
+      'created',
+      'created',
+      'skipped',
+      'deleted',
+    ]);
+    expect(JSON.stringify(result)).not.to.contain('createdInThisRun');
+  });
+
+  it('retains a linked before record when the after write fails', async () => {
+    const plan = await provision.plan(lifecycleConnection(), {
+      usersDoc: provisionDocument,
+      fuzzyUsername: false,
+      cleanupOnFailure: true,
+    });
+    const before = {
+      relationship: 'contact',
+      phase: 'before' as const,
+      sobject: 'Contact',
+      matchField: 'External_Id__c',
+      fields: { External_Id__c: 'alice' },
+      pendingUserIdFields: [],
+      mode: 'sync' as const,
+      status: 'planned' as const,
+      errors: [],
+      linkUser: { userField: 'ContactId', fromRelatedField: 'Id' },
+    };
+    plan.plans[0].relatedPlans = [
+      before,
+      { ...before, relationship: 'employee', phase: 'after', sobject: 'Employee__c', linkUser: undefined },
+    ];
+    const remove = sinon.stub();
+    const conn = {
+      query: sinon.stub().resolves({ records: [] }),
+      sobject: sinon.stub().callsFake((name: string) => {
+        if (name === 'User') return { update: sinon.stub().resolves([{ success: true, id: '005user', errors: [] }]) };
+        return {
+          create: sinon
+            .stub()
+            .resolves([
+              name === 'Contact'
+                ? { success: true, id: '003new', errors: [] }
+                : { success: false, errors: [{ message: 'Employee blocked' }] },
+            ]),
+          delete: remove,
+        };
+      }),
+    };
+    const result = await provision.apply(conn as never, plan);
+    expect(result.users[0].status).to.equal('failed');
+    expect(result.users[0].errors).to.deep.equal(['Employee blocked']);
+    expect(remove.called).to.equal(false);
+    expect(result.users[0].relatedRecords?.[2].detail).to.contain('saved User');
+  });
+
+  for (const legacy of [false, true]) {
+    for (const dryRun of [false, true]) {
+      it(`preserves before creations through a failed link read (${legacy ? 'legacy' : 'callable'}, ${
+        dryRun ? 'preview' : 'live'
+      })`, async () => {
+        const create = sinon.stub().resolves([{ success: true, id: '003new', errors: [] }]);
+        const remove = sinon.stub().resolves([{ success: false, errors: [{ message: 'Delete blocked' }] }]);
+        const userUpdate = sinon.stub();
+        const sobject = sinon
+          .stub()
+          .callsFake((name: string) => (name === 'Contact' ? { create, delete: remove } : { update: userUpdate }));
+        const conn = {
+          describe: sinon.stub().callsFake(async (name: string) => ({
+            queryable: true,
+            fields:
+              name === 'User'
+                ? [...userFields, { name: 'ContactId', createable: true, updateable: true }]
+                : [
+                    {
+                      name: 'External_Id__c',
+                      createable: true,
+                      updateable: true,
+                      filterable: true,
+                      externalId: true,
+                    },
+                    { name: 'Id' },
+                    { name: 'Link__c' },
+                  ],
+          })),
+          query: sinon.stub().callsFake(async (soql: string) => ({
+            records: soql.includes('FROM User WHERE')
+              ? [{ Id: '005user', Username: 'alice@example.test', IsActive: true }]
+              : [],
+          })),
+          sobject,
+        };
+        const options = {
+          usersDoc: { users: [{ ...provisionDocument.users[0], personas: ['base'], related: ['contact'] }] },
+          personasDoc: { personas: { base: {} } },
+          relatedDoc: {
+            relationships: {
+              contact: {
+                sobject: 'Contact',
+                phase: 'before',
+                match: { field: 'External_Id__c', from: 'user.Username' },
+                fields: { External_Id__c: { from: 'user.Username' } },
+                linkUser: { userField: 'ContactId', fromRelatedField: 'Link__c' },
+              },
+            },
+          },
+          fuzzyUsername: false,
+          cleanupOnFailure: true,
+        };
+        const result = legacy
+          ? await new ProvisionUserUseCase().execute({ connection: conn as never, ...options, dryRun })
+          : await (async () => {
+              const plan = await provision.plan(conn as never, options);
+              return dryRun
+                ? plan.preview
+                : provision.apply(conn as never, JSON.parse(JSON.stringify(plan)) as ProvisionPlan);
+            })();
+        expect(userUpdate.called).to.equal(false);
+        expect(remove.called).to.equal(!dryRun);
+        expect(create.called).to.equal(!dryRun);
+        expect(JSON.stringify(result)).not.to.contain('createdInThisRun');
+        if (!dryRun) {
+          expect(result.users[0].relatedRecords?.map((related) => related.action)).to.deep.equal([
+            'created',
+            'deleteFailed',
+          ]);
+          expect(result.users[0].errors.join('; ')).to.contain('Cannot resolve Contact.Link__c');
+          expect(result.users[0].relatedRecords?.[1].error).to.equal('Delete blocked');
+          expect(result.summary.failed).to.equal(1);
+        }
+      });
+    }
+  }
 
   it('applies a JSON-cloned provision plan and checks cancellation between stages', async () => {
     const plan = await provision.plan(lifecycleConnection(), {

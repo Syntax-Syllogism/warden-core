@@ -1,9 +1,26 @@
 import { z } from 'zod';
+import { sourceExprSchema } from './relatedCatalog.js';
+
+export const relatedContextValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.strictObject({
+    lookup: z.strictObject({
+      sobject: z.string().min(1),
+      field: z.string().min(1),
+      value: sourceExprSchema,
+    }),
+  }),
+]);
 
 const schemaVersionSchema = z.literal(1).optional().describe('Supported file schema version. Omit it for version 1.');
 
 export const userInputSchema = z
   .looseObject({
+    related: z.array(z.string()).optional(),
+    relatedContext: z.record(z.string(), relatedContextValueSchema).optional(),
     personas: z.array(z.string()).optional().describe('Persona names to merge for this user.'),
   })
   .describe('A User field record with optional Warden metadata.');
@@ -18,7 +35,7 @@ export const usersDefinitionFileSchema = z
 /**
  * CSV has no JSON Schema because its User columns come from Salesforce describe metadata.
  * The fixed metadata columns are `personas`, `match`, and `fuzzyUsername`; all other
- * columns are User API names. `personas` is a semicolon-delimited list by default,
+ * columns are User API names. Related-record metadata is supported only in JSON. `personas` is a semicolon-delimited list by default,
  * configurable with `csvListDelimiter`.
  */
 export const USERS_CSV_COLUMNS = ['personas', 'match', 'fuzzyUsername'] as const;

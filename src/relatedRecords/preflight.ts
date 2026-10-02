@@ -122,6 +122,12 @@ const isEligiblePersonAccountRecordType = (
   return row.IsPersonType === true || recordType.isPersonType === true;
 };
 
+const isUniqueFilterableField = (meta: UserFieldMeta | undefined): boolean =>
+  Boolean(meta && meta.filterable && (meta.externalId === true || meta.unique === true));
+
+export const isEligibleLookupField = (meta: UserFieldMeta | undefined): boolean =>
+  isUniqueFilterableField(meta) && meta?.readable !== false;
+
 const checkFieldMetadata = (
   def: RelationshipDef,
   fieldMap: Map<string, UserFieldMeta>,
@@ -130,7 +136,7 @@ const checkFieldMetadata = (
   const missing = missingFields(def, fieldMap);
   if (missing.length > 0) return message('errorRelatedUnknownFields', [def.sobject, missing.join(', ')]);
   const matchMeta = fieldMap.get(def.match.field.toLowerCase());
-  if (!matchMeta?.filterable || !(matchMeta.externalId === true || matchMeta.unique === true)) {
+  if (!isUniqueFilterableField(matchMeta)) {
     return message('errorRelatedMatchFieldNotUnique', [def.match.field, def.sobject]);
   }
   const unreadable = unreadableFields(def, fieldMap);
@@ -151,6 +157,7 @@ export const runRelatedPreflight = async (options: {
   catalog: RelatedCatalog;
   selected: string[];
   cache: SobjectDescribeCache;
+  userFieldMap?: Map<string, UserFieldMeta>;
   message?: RelatedMessage;
 }): Promise<RelatedPreflightResult> => {
   const { conn, catalog, selected, cache, message = relatedRecordsMessage } = options;
@@ -192,6 +199,17 @@ export const runRelatedPreflight = async (options: {
     if (!described.queryable) {
       result.ineligible.set(name, message('errorRelatedSobjectNotQueryable', [def.sobject]));
       continue;
+    }
+    if (def.linkUser) {
+      const userField = options.userFieldMap?.get(def.linkUser.userField.toLowerCase());
+      const sourceField = described.fields.get(def.linkUser.fromRelatedField.toLowerCase());
+      if (!userField?.createable || !userField.updateable || !sourceField || sourceField.readable === false) {
+        result.ineligible.set(
+          name,
+          `Cannot link ${def.sobject}.${def.linkUser.fromRelatedField} to User.${def.linkUser.userField}: field access is unavailable.`
+        );
+        continue;
+      }
     }
     const fieldProblem = checkFieldMetadata(def, described.fields, message);
     if (fieldProblem) {

@@ -174,7 +174,12 @@ export const executeBulkUserSaves = async (
 
 /** Report a user's related plans as unattempted — the run never reached the related DML stage. */
 export const markRelatedUnapplied = (plan: UserPlan): UserPlan => {
-  if (plan.relatedPlans) plan.relatedResults = toUnappliedResults(plan.relatedPlans);
+  if (plan.relatedPlans) {
+    const attempted = new Set((plan.relatedResults ?? []).map((result) => result.relationship));
+    plan.relatedResults = (plan.relatedResults ?? []).concat(
+      toUnappliedResults(plan.relatedPlans.filter((related) => !attempted.has(related.relationship)))
+    );
+  }
   return plan;
 };
 

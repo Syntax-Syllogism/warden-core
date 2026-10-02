@@ -21,11 +21,18 @@ The workflow is:
 5. Build user and assignment plans, including additive or sync modes.
 6. The write use case's `plan()` calculates planned results and license usage
    without DML.
-7. Its `apply()` saves Users in bulk, applies related records after a
-   successful User save, then applies assignments and post-save state.
+7. Its `apply()` writes before relationships and injects their User links,
+   saves the users whose before stage succeeded in bulk, then writes after
+   relationships and applies assignments and post-save state.
+8. When `cleanupOnFailure` is true, attempt best-effort cleanup of related
+   records created in this apply pass for users whose final status is `failed`.
 
 Validation and planning happen before the corresponding user DML. A failed
-User save prevents that user's related-record work. Related-record failures do
+User save prevents that user's after work; successful before writes remain
+by default. Opt-in cleanup can delete those creations, but retains before
+records linked to a successfully saved User through `linkUser`. See
+[Related-record cleanup](related-records.md#optional-cleanup-on-failure) for
+eligibility, deletion order, and result reporting. Related-record failures do
 not roll back an already-saved User; they are attached to that user's result.
 Results are restored to input order even though work is batched concurrently.
 
@@ -43,7 +50,8 @@ User fields plus these reserved keys:
 - `match`: a filterable User field for this row;
 - `profile` and `role`: per-user overrides;
 - `fuzzyUsername`: enables fuzzy Username matching for the row; and
-- `related`: selected relationship names from the related catalog.
+- `related`: selected relationship names from the related catalog;
+- `relatedContext`: named literals or batched lookups for related field sources.
 
 Persona definitions are keyed by name under `personas`. A persona may define
 `profile`, `role`, `userAttributes`, assignment lists (`permissionSets`,

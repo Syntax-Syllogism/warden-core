@@ -24,6 +24,13 @@ export type ValidationError = {
     | 'errorUserRoleConflict'
     | 'errorInvalidUserProfile'
     | 'errorInvalidUserRole'
+    | 'errorInvalidRelatedContext'
+    | 'errorInvalidLookup'
+    | 'errorUnknownContextName'
+    | 'errorLookupNotFound'
+    | 'errorLookupAmbiguous'
+    | 'errorLookupFieldIneligible'
+    | 'errorConflictingLinkUser'
     | 'errorInvalidRelatedKey'
     | 'errorUnknownRelationship'
     | 'errorDuplicateRelationshipSelection'
@@ -53,6 +60,7 @@ export type CanonicalizedUser = {
   fuzzyUsername?: boolean;
   /** Relationship names selected by this user's `related` meta key. Never persona-inferred. */
   related?: string[];
+  relatedContext?: Record<string, unknown>;
   fields: Record<string, unknown>;
   validationErrors?: ValidationError[];
   source?: CsvRowInfo;
@@ -61,7 +69,15 @@ export type CanonicalizedUser = {
 export const modeKeys = ['permissionSetMode', 'permissionSetGroupMode', 'publicGroupMode', 'queueMode'] as const;
 
 export const assignmentListKeys = ['permissionSets', 'permissionSetGroups', 'publicGroups', 'queues'] as const;
-const reservedUserKeys = new Set(['personas', 'match', 'profile', 'role', 'fuzzyusername', 'related']);
+const reservedUserKeys = new Set([
+  'personas',
+  'match',
+  'profile',
+  'role',
+  'fuzzyusername',
+  'related',
+  'relatedcontext',
+]);
 
 export type { UserFieldMeta } from '../matching/index.js';
 
@@ -365,6 +381,16 @@ const attachCsvSource = (user: CanonicalizedUser, input: unknown): Canonicalized
   return user;
 };
 
+const extractRelatedContext = (input: UserInput, errors: ValidationError[]): Record<string, unknown> | undefined => {
+  const raw = Object.entries(input).find(([key]) => key.toLowerCase() === 'relatedcontext')?.[1];
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    errors.push(buildValidationError('errorInvalidRelatedContext', []));
+    return undefined;
+  }
+  return raw as Record<string, unknown>;
+};
+
 const canonicalizeValidUser = (
   input: UserInput,
   names: string[],
@@ -419,6 +445,7 @@ const canonicalizeValidUser = (
   const rawRelated = Object.entries(input).find(([k]) => k.toLowerCase() === 'related')?.[1];
   const relatedErrors: ValidationError[] = [];
   const selectedRelated = resolveRelatedSelection(rawRelated, related, relatedErrors);
+  const rawContext = extractRelatedContext(input, relatedErrors);
   const allErrors = [...errors, ...mergeErrors, ...matchErrors, ...relatedErrors];
   const result: CanonicalizedUser = {
     inputKey: resolveInputKey(merged, names.length > 0 ? `${names.join('+')}:${fallback}` : fallback),
@@ -429,6 +456,7 @@ const canonicalizeValidUser = (
     matchField,
     fuzzyUsername,
     related: selectedRelated,
+    relatedContext: rawContext,
     fields: merged,
     validationErrors: allErrors.length > 0 ? allErrors : undefined,
   };

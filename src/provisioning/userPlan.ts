@@ -1,5 +1,5 @@
 import { matchKey, usableMatchValue, type ExistingUser } from '../matching/index.js';
-import type { RelatedRecordPlan, RelatedRecordResult } from '../relatedRecords/types.js';
+import type { RelatedRecordPlan, RelatedRecordResult, AppliedRelatedRecordResult } from '../relatedRecords/types.js';
 import type { CsvRowInfo } from '../shared/csv.js';
 import {
   buildDefaultAlias,
@@ -29,10 +29,10 @@ export type UserPlan = {
   actions: string[];
   errors: string[];
   source?: CsvRowInfo;
-  /** `after`-phase related-record plans for this user, when `--related-def` is in play. */
+  /** Related-record plans for this user, when `--related-def` is in play. */
   relatedPlans?: RelatedRecordPlan[];
   /** Reported related-record outcomes, filled in by the dry-run or live related stage. */
-  relatedResults?: RelatedRecordResult[];
+  relatedResults?: AppliedRelatedRecordResult[];
 };
 
 export type UserResult = {
@@ -55,7 +55,12 @@ export type UserResult = {
   relatedRecords?: RelatedRecordResult[];
 };
 
-export type OrderedUserResult = UserResult & { order: number; planId: string; source?: CsvRowInfo };
+export type OrderedUserResult = UserResult & {
+  order: number;
+  planId: string;
+  source?: CsvRowInfo;
+  relatedRecords?: AppliedRelatedRecordResult[];
+};
 
 export const identityFromTarget = (
   target: JsonRecord,

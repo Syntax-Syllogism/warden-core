@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 const schemaVersionSchema = z.literal(1).optional().describe('Supported file schema version. Omit it for version 1.');
 
-const sourceExprSchema = z.union([
-  z.strictObject({ from: z.string().describe('A source such as user.Department or user.Id.') }),
+export const sourceExprSchema = z.union([
+  z.strictObject({ from: z.string().describe('A source such as user.Department, user.Id, or context.account.') }),
   z.strictObject({ value: z.unknown().describe('A literal value.') }),
 ]);
 
@@ -23,6 +23,10 @@ export const relationshipDefSchema = z
       })
       .describe('Target match configuration.'),
     fields: z.record(z.string(), sourceExprSchema).describe('Target fields and their source expressions.'),
+    linkUser: z
+      .strictObject({ userField: z.string().min(1), fromRelatedField: z.string().min(1) })
+      .optional()
+      .describe('Before-phase field copied from the related record onto the User.'),
     mode: z.enum(['setIfEmpty', 'sync']).nullish().describe('How configured fields are updated.'),
   })
   .describe('A reusable related-record relationship.');

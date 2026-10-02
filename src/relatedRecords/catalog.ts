@@ -24,10 +24,11 @@ const assertUserSource = (
   fieldName: string,
   userFieldMap: Map<string, UserFieldMeta>,
   message: RelatedMessage,
-  options: { allowUserId: boolean }
+  options: { allowUserId: boolean; allowContext?: boolean }
 ): void => {
   const parsed = parseSource(from);
-  if (parsed.kind === 'context') fail(message, 'errorRelatedContextUnsupported', [name, fieldName]);
+  if (parsed.kind === 'context' && !options.allowContext)
+    fail(message, 'errorRelatedContextUnsupported', [name, fieldName]);
   if (parsed.kind === 'invalid') fail(message, 'errorRelationshipInvalidFrom', [name, fieldName, String(from)]);
   if (parsed.kind === 'userId' && !options.allowUserId) {
     fail(message, 'errorRelationshipMatchFromUserId', [name]);
@@ -41,7 +42,8 @@ const assertValidFields = (
   raw: unknown,
   name: string,
   userFieldMap: Map<string, UserFieldMeta>,
-  message: RelatedMessage = relatedRecordsMessage
+  message: RelatedMessage,
+  phase: 'before' | 'after'
 ): Record<string, SourceExpr> => {
   if (!isPlainObject(raw) || Object.keys(raw).length === 0) {
     fail(message, 'errorRelationshipInvalidFields', [name]);
@@ -54,18 +56,20 @@ const assertValidFields = (
     if (!isSourceExpr(expr)) fail(message, 'errorRelationshipInvalidSource', [name, fieldName]);
     const source = expr as SourceExpr;
     if ('from' in source) {
-      assertUserSource(source.from, name, fieldName, userFieldMap, message, { allowUserId: true });
+      assertUserSource(source.from, name, fieldName, userFieldMap, message, {
+        allowUserId: phase === 'after',
+        allowContext: true,
+      });
     }
     fields[fieldName] = source;
   }
   return fields;
 };
 
-const assertValidPhase = (raw: unknown, name: string, message: RelatedMessage): 'after' => {
+const assertValidPhase = (raw: unknown, name: string, message: RelatedMessage): 'before' | 'after' => {
   if (raw === undefined || raw === null) fail(message, 'errorRelationshipMissingPhase', [name]);
-  if (raw === 'before') fail(message, 'errorPhaseBeforeUnsupported', [name]);
-  if (raw !== 'after') fail(message, 'errorRelationshipInvalidPhase', [name, String(raw)]);
-  return 'after';
+  if (raw !== 'before' && raw !== 'after') fail(message, 'errorRelationshipInvalidPhase', [name, String(raw)]);
+  return raw as 'before' | 'after';
 };
 
 const assertValidRecordType = (
@@ -96,9 +100,17 @@ const assertValidRelationship = (
 ): RelationshipDef => {
   if (!isPlainObject(raw)) fail(message, 'errorRelationshipInvalidDefinition', [name]);
   const def = raw as Record<string, unknown>;
-  if ('linkUser' in def) fail(message, 'errorLinkUserUnsupported', [name]);
   if (!isNonEmptyString(def.sobject)) fail(message, 'errorRelationshipInvalidSobject', [name]);
   const phase = assertValidPhase(def.phase, name, message);
+  if ('linkUser' in def && phase === 'after') fail(message, 'errorLinkUserUnsupported', [name]);
+  if (
+    def.linkUser &&
+    (!isPlainObject(def.linkUser) ||
+      !isNonEmptyString(def.linkUser.userField) ||
+      !isNonEmptyString(def.linkUser.fromRelatedField))
+  ) {
+    fail(message, 'errorRelationshipInvalidLinkUser', [name]);
+  }
   const match = def.match;
   if (!isPlainObject(match) || !isNonEmptyString(match.field) || !isNonEmptyString(match.from)) {
     fail(message, 'errorRelationshipInvalidMatch', [name]);
@@ -110,7 +122,8 @@ const assertValidRelationship = (
     phase,
     recordType: assertValidRecordType(def.recordType, name, message),
     match: { field: matchDef.field, from: matchDef.from },
-    fields: assertValidFields(def.fields, name, userFieldMap, message),
+    fields: assertValidFields(def.fields, name, userFieldMap, message, phase),
+    ...(def.linkUser ? { linkUser: def.linkUser as RelationshipDef['linkUser'] } : {}),
     mode: assertValidMode(def.mode, name, message),
   };
 };

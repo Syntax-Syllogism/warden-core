@@ -46,20 +46,24 @@ provisioning behavior.
 ### Users definitions
 
 The JSON document has a required `users` array. Each entry is an open User
-field record. `personas`, when present, is a string array; other User fields
-and provisioning metadata remain open to Salesforce describe metadata and
-runtime validation.
+field record. `personas` and `related`, when present, are string arrays. `relatedContext`
+is a record of string, number, boolean, or null literals or strict
+`{ "lookup": { "sobject": "...", "field": "...", "value": ... } }` objects,
+where `value` is a source expression. Malformed related metadata fails parsing
+for the whole JSON file. Other User fields
+and metadata remain open to Salesforce describe and runtime validation.
 
 The legacy singular `persona` key is not a structural schema failure, but the
 provisioning definition validation rejects it as a semantic error. JSON users
 can also use runtime fields such as `match`, `profile`, `role`, `fuzzyUsername`,
-and `related`.
+and `relatedContext`.
 
 CSV users do not have a JSON Schema because their User columns come from
 Salesforce describe metadata. The fixed Warden columns are `personas`,
-`match`, and `fuzzyUsername`; all other columns are User API names. The
-`personas` cell is a semicolon-separated list by default and can use the
-`csvListDelimiter` option. Empty cells omit a key, and boolean fields accept
+`match`, and `fuzzyUsername`; all other columns are User API names.
+Related-record metadata (`related` and `relatedContext`) is supported only in
+JSON. The `personas` cell is a semicolon-separated list by default and can use
+the `csvListDelimiter` option. Empty cells omit a key, and boolean fields accept
 `true`, `false`, `1`, `0`, `yes`, or `no`.
 
 ### Related catalog
@@ -69,7 +73,9 @@ name. A relationship structurally contains:
 
 - `sobject`, `phase` (`before` or `after`), and `match` (`field` and `from`);
 - `fields`, whose values are either `{ "from": "user.Field" }` or a literal
-  `{ "value": ... }` expression; and
+  `{ "value": ... }` expression (fields also accept `context.<name>`); and
+- optional `linkUser` with required non-empty `userField` and `fromRelatedField`
+  strings (only valid on `before` at runtime);
 - optional `recordType.developerName` and `mode` (`setIfEmpty` or `sync`);
   `recordType` and `mode` may also be explicitly `null`.
 
@@ -77,7 +83,7 @@ The schema preserves unknown metadata on the document, relationships, match,
 and record-type objects. Source-expression objects are intentionally strict:
 they must contain exactly one of `from` or `value`.
 
-The current runtime supports only `after` relationships. It additionally
+The runtime supports both phases. It additionally
 checks source scope, object and field access, match-field eligibility, record
 type rules, cross-references, collisions, and other Salesforce semantics. See
 [Related-record synchronization](related-records.md) for those runtime rules.

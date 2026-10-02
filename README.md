@@ -70,7 +70,18 @@ const result = await freeze.apply(connection, JSON.parse(JSON.stringify(plan)));
 
 Provision options accept `personasSupplied` to override whether persona definitions
 were supplied; this internal option has no UI hint. Provision previews and apply
-summaries count reference warnings and planned license shortfalls.
+summaries count reference warnings and planned license shortfalls. Related
+records support before/after phases, before-only `linkUser`, and per-user
+`relatedContext` lookups; see [related records](docs/related-records.md).
+
+Provision options and the legacy `ProvisionUserRequest` accept optional
+`cleanupOnFailure` (default false). `ProvisionPlan` stores this setting;
+missing settings on older plans mean false. Cleanup appends `deleted` and
+`deleteFailed` actions to `RelatedRecordResult` for eligible creations on failed
+users, while keeping records referenced by saved Users. See
+[cleanup semantics](docs/related-records.md#optional-cleanup-on-failure).
+
+JSON users files now validate `related` and `relatedContext` structurally.
 
 ## Errors
 
@@ -78,13 +89,19 @@ Errors are reported as `WardenError` instances (or area-specific subclasses).
 The `code` and the shape of `data` are part of the public API; the `message`
 text is not and may be reworded in any release. Provision user-row errors retain
 CSV source path and line prefixes in both previews and apply results.
+Context lookup failures and conflicting before links are per-user errors.
+Structurally empty linking field names fail with `schema-invalid`;
+whitespace-only names fail runtime catalog validation with
+`errorRelationshipInvalidLinkUser`.
+The legacy `errorPhaseBeforeUnsupported` code remains in the type contract
+for compatibility, but before relationships are now supported.
 
 | Code | Thrown by |
 | --- | --- |
 | `errorUnsupportedAccessType`, `errorInvalidTarget`, `errorFieldTargetMustBeQualified`, `errorObjectNotFound`, `errorFieldNotFound`, `errorApexClassNotFound`, `errorVisualforcePageNotFound`, `errorCustomPermissionNotFound`, `errorTabNotFound`, `errorRecordTypeTargetMustBeQualified`, `errorMasterRecordTypeUnsupported`, `errorRecordTypeNotFound`, `errorRecordTypeAmbiguous`, `errorRecordTypeInactive`, `errorRecordTypeMetadataReadFailed`, `errorAccessQueryFailed` | Access audit and target resolution. |
 | `errorInvalidCsv`, `errorInvalidJson`, `errorInvalidPersonaDefinition`, `errorMissingUserFieldMap`, `errorPersonasWithoutDefinition` | Definition readers. |
 | `errorInvalidJson`, `errorInvalidUserMatchField`, `errorInvalidUserValue`, `errorInvalidAgainstValue`, `errorInvalidAgainstMatchField`, `errorInvalidSnapshot`, `errorPromptDeclined`, `errorAccessScopesMutuallyExclusive`, `errorVerifyUserMode` | Lifecycle targeting, snapshot validation, access scope validation, and diff verification. |
-| `errorInvalidRelatedCatalog`, `errorRelationshipInvalidDefinition`, `errorRelationshipInvalidSobject`, `errorRelationshipMissingPhase`, `errorRelationshipInvalidPhase`, `errorPhaseBeforeUnsupported`, `errorLinkUserUnsupported`, `errorRelatedContextUnsupported`, `errorRelationshipInvalidMatch`, `errorRelationshipMatchFromUserId`, `errorRelationshipInvalidFields`, `errorRelationshipInvalidSource`, `errorRelationshipInvalidFrom`, `errorRelationshipUnknownUserField`, `errorRelationshipUnwritableField`, `errorRelationshipInvalidMode`, `errorRelationshipInvalidRecordType` | Related-record catalog validation. |
+| `errorInvalidRelatedCatalog`, `errorRelationshipInvalidDefinition`, `errorRelationshipInvalidSobject`, `errorRelationshipMissingPhase`, `errorRelationshipInvalidPhase`, `errorPhaseBeforeUnsupported`, `errorLinkUserUnsupported`, `errorRelationshipInvalidLinkUser`, `errorRelatedContextUnsupported`, `errorRelationshipInvalidMatch`, `errorRelationshipMatchFromUserId`, `errorRelationshipInvalidFields`, `errorRelationshipInvalidSource`, `errorRelationshipInvalidFrom`, `errorRelationshipUnknownUserField`, `errorRelationshipUnwritableField`, `errorRelationshipInvalidMode`, `errorRelationshipInvalidRecordType` | Related-record catalog validation. |
 | `errorDuplicateExternalIdMatch`, `errorMissingRequiredFields`, `errorMissingSaveId`, `errorPromptDeclined`, `errorInvalidJson`, `errorInvalidPersonaDefinition`, `errorPersonasWithoutDefinition` | Provisioning execution and planning. |
 | `schema-invalid`, `schema-version-unsupported` | Structural file-format validation. `data.issues` contains `{ path, message }` entries. |
 

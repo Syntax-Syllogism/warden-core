@@ -5,8 +5,9 @@ export type { ExistingUser } from '../matching/index.js';
 import type { CsvRowInfo } from '../shared/csv.js';
 import { describeUserFields, type SobjectDescribeCache } from '../shared/userFields.js';
 import { assertValidRelatedCatalog } from '../relatedRecords/catalog.js';
-import { applyRelatedPhase } from '../relatedRecords/apply.js';
-import { buildRelatedPlans } from '../relatedRecords/plan.js';
+import { cleanupProvisionFailures, publicRelatedResults } from '../relatedRecords/cleanup.js';
+import { applyRelatedPhase, applyBeforeUserSaves } from '../relatedRecords/apply.js';
+import { buildRelatedPlans, warnRelatedProfileLicenses } from '../relatedRecords/plan.js';
 import { emptyPreflightResult, runRelatedPreflight, type RelatedPreflightResult } from '../relatedRecords/preflight.js';
 import type { RelatedCatalog, RelatedRecordPlan } from '../relatedRecords/types.js';
 import {
@@ -89,6 +90,7 @@ export type ProvisionUserRequest = {
   externalId?: string;
   fuzzyUsername?: boolean;
   dryRun: boolean;
+  cleanupOnFailure?: boolean;
   personasSupplied?: boolean;
   relatedDoc?: JsonRecord;
   relatedPath?: string;
@@ -154,7 +156,7 @@ const assembleResult = (
       status: result.status,
       actions: result.actions,
       errors: addSourceContext(result.source, result.errors),
-      ...(result.relatedRecords ? { relatedRecords: result.relatedRecords } : {}),
+      ...(result.relatedRecords ? { relatedRecords: publicRelatedResults(result.relatedRecords) } : {}),
     }));
   const result: ProvisionResult = {
     summary: summarize(
@@ -197,8 +199,10 @@ export class ProvisionUserUseCase {
     conn: Connection,
     plans: ReturnType<typeof buildUserPlans>,
     refs: ResolvedRefs,
-    validationResults: OrderedUserResult[]
+    validationResults: OrderedUserResult[],
+    cleanupOnFailure = false
   ): Promise<OrderedUserResult[]> {
+    await applyBeforeUserSaves(conn, plans);
     const invalidResults = plans
       .filter((plan) => plan.errors.length > 0)
       .map((plan) => toUserResult(markRelatedUnapplied(plan), 'failed', { includeExistingId: false }));
@@ -228,7 +232,7 @@ export class ProvisionUserUseCase {
     for (const outcome of savedOutcomes) {
       const related = relatedByPlanId.get(outcome.plan.planId);
       if (related) {
-        outcome.plan.relatedResults = related;
+        outcome.plan.relatedResults = (outcome.plan.relatedResults ?? []).concat(related);
         outcome.plan.errors.push(
           ...related
             .filter((result) => result.status === 'failed' && result.error)
@@ -239,7 +243,16 @@ export class ProvisionUserUseCase {
     const postSaveResults = await runBatches(savedOutcomes, this.userProcessConcurrency, (outcome) =>
       applySavedPlan({ conn, outcome, refs, message })
     );
-    return validationResults.concat(invalidResults, saveFailures, postSaveResults);
+    const results = invalidResults.concat(saveFailures, postSaveResults);
+    if (cleanupOnFailure) {
+      await cleanupProvisionFailures(
+        conn,
+        plans,
+        results,
+        savedOutcomes.map((outcome) => outcome.plan.planId)
+      );
+    }
+    return validationResults.concat(results);
   }
 
   // eslint-disable-next-line @typescript-eslint/member-ordering
@@ -289,6 +302,7 @@ export class ProvisionUserUseCase {
             catalog,
             selected: selectedRelationships(validUsers),
             cache: describeCache,
+            userFieldMap: fieldMap,
             message,
           })
         : Promise.resolve<RelatedPreflightResult>(emptyPreflightResult()),
@@ -296,7 +310,15 @@ export class ProvisionUserUseCase {
     refs.warnings.push(...preflight.warnings);
 
     const relatedPlansByOrder = catalog
-      ? await buildRelatedPlans({ conn, users: validUsers, catalog, preflight, userFieldMap: fieldMap, message })
+      ? await buildRelatedPlans({
+          conn,
+          users: validUsers,
+          catalog,
+          preflight,
+          userFieldMap: fieldMap,
+          cache: describeCache,
+          message,
+        })
       : undefined;
     const plans = buildUserPlans({
       validUsers,
@@ -309,11 +331,12 @@ export class ProvisionUserUseCase {
       message,
       relatedPlansByOrder,
     });
+    await warnRelatedProfileLicenses(conn, plans, refs.warnings, message);
     const licenseUsage = request.dryRun ? await calculateUserLicenseUsage(conn, plans) : undefined;
     const validationResults = validationResultsFor(validationFailureUsers);
     const results = request.dryRun
       ? await this.runDryRun(conn, plans, refs, validationResults)
-      : await this.runLive(conn, plans, refs, validationResults);
+      : await this.runLive(conn, plans, refs, validationResults, request.cleanupOnFailure);
     return assembleResult(results, refs, licenseUsage, request.dryRun);
   }
 }

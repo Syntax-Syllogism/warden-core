@@ -1,4 +1,5 @@
 const TEXT: Record<string, string> = {
+  detailRelatedRetainedLinkedUser: 'Kept related record because the saved User references it through %s.',
   errorInvalidJson: 'Failed to parse JSON file %s: %s',
   errorInvalidPersonaDefinition: 'persona-def.json must contain a personas object.',
   promptWarningsContinue: 'Validation warnings were found. Continue?',
@@ -31,14 +32,16 @@ const TEXT: Record<string, string> = {
   errorInvalidRelatedCatalog: 'related-def.json must contain a relationships object.',
   errorRelationshipInvalidDefinition: 'Relationship "%s" must be an object.',
   errorRelationshipInvalidSobject: 'Relationship "%s" must declare a non-empty "sobject".',
-  errorRelationshipMissingPhase: 'Relationship "%s" must declare "phase". The only supported value is "after".',
-  errorRelationshipInvalidPhase: 'Relationship "%s" has an invalid phase "%s". The only supported value is "after".',
+  errorRelationshipMissingPhase: 'Relationship "%s" must declare "phase". Supported phases are "before" and "after".',
+  errorRelationshipInvalidPhase:
+    'Relationship "%s" has an invalid phase "%s". Supported phases are "before" and "after".',
   errorPhaseBeforeUnsupported:
-    'Relationship "%s" uses phase "before". Before-phase relationships are not supported in this release; they ship with related-record provisioning v2.',
-  errorLinkUserUnsupported:
-    'Relationship "%s" uses "linkUser". Writing a value back onto the User is not supported in this release; it ships with related-record provisioning v2.',
+    'Relationship "%s" uses phase "before". Before-phase relationships are supported; this legacy error code is retained for compatibility.',
+  errorRelationshipInvalidLinkUser:
+    'Relationship "%s" linkUser requires non-empty userField and fromRelatedField strings.',
+  errorLinkUserUnsupported: 'Relationship "%s" uses "linkUser". linkUser is only supported on before relationships.',
   errorRelatedContextUnsupported:
-    'Relationship "%s" field "%s" uses a "context." source. Related-context sources are not supported in this release; they ship with related-record provisioning v2.',
+    'Relationship "%s" field "%s" uses a "context." source. Context sources cannot be used in match.from.',
   errorRelationshipInvalidMatch: 'Relationship "%s" must declare "match" with non-empty "field" and "from" strings.',
   errorRelationshipMatchFromUserId:
     'Relationship "%s" cannot match on "user.Id" because matching runs before the User is saved.',
@@ -61,11 +64,20 @@ const TEXT: Record<string, string> = {
   errorRelatedPersonAccountRecordTypeRequired:
     'An Account relationship must declare an available Person Account record type.',
   warningRelationshipSkipped: 'Relationship "%s" will be skipped: %s',
+  errorInvalidRelatedContext: 'relatedContext must be an object.',
+  errorInvalidLookup: 'Context lookup "%s" is invalid; use a User field or literal value.',
+  errorUnknownContextName: 'Relationship "%s" references unknown context name "%s".',
+  errorLookupNotFound: 'Context lookup "%s" found no record for "%s".',
+  errorLookupAmbiguous: 'Context lookup "%s" found multiple records for "%s".',
+  errorLookupFieldIneligible: 'Lookup field %s on %s must be readable, filterable and External ID or Unique.',
+  errorConflictingLinkUser: 'Multiple before relationships claim User.%s.',
+  warningRelatedProfileLicense:
+    'Profile "%s" uses license "%s" for %s users linking ContactId. Salesforce validates eligibility at save time.',
   errorInvalidRelatedKey: 'related must be an array of relationship names. Got: %s.',
   errorUnknownRelationship: 'Unknown relationship "%s".',
   errorDuplicateRelationshipSelection: 'Relationship "%s" is listed more than once.',
   errorRelatedWithoutCatalog: 'related was supplied but no --related-def catalog was provided.',
-  errorRelatedSourceEmpty: 'Relationship "%s" field "%s" resolved to an empty value from User.%s.',
+  errorRelatedSourceEmpty: 'Relationship "%s" field "%s" resolved to an empty value from source %s.',
   errorRelatedInvalidSourceValue: 'Relationship "%s" field "%s" has an unresolvable source "%s".',
   errorAmbiguousRelatedMatch: 'Relationship "%s" matched multiple %s records on %s="%s".',
   errorRelatedMatchCollision: 'Relationship "%s" resolves to %s="%s" for more than one user.',

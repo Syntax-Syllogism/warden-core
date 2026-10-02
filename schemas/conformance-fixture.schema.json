@@ -135,6 +135,91 @@
                     },
                     "type": "array"
                   },
+                  "related": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "relatedContext": {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "boolean"
+                        },
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "lookup": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "field": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "sobject": {
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "from": {
+                                          "description": "A source such as user.Department, user.Id, or context.account.",
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "from"
+                                      ],
+                                      "type": "object"
+                                    },
+                                    {
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "value": {
+                                          "description": "A literal value."
+                                        }
+                                      },
+                                      "required": [
+                                        "value"
+                                      ],
+                                      "type": "object"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "sobject",
+                                "field",
+                                "value"
+                              ],
+                              "type": "object"
+                            }
+                          },
+                          "required": [
+                            "lookup"
+                          ],
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
                   "userId": {
                     "description": "Simulated Salesforce User Id.",
                     "minLength": 1,

@@ -8,6 +8,7 @@ export type RelatedRecordsErrorCode =
   | 'errorRelationshipInvalidPhase'
   | 'errorPhaseBeforeUnsupported'
   | 'errorLinkUserUnsupported'
+  | 'errorRelationshipInvalidLinkUser'
   | 'errorRelatedContextUnsupported'
   | 'errorRelationshipInvalidMatch'
   | 'errorRelationshipMatchFromUserId'

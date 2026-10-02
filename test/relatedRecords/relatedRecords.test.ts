@@ -58,7 +58,7 @@ describe('related record provisioning', () => {
         userFieldMap,
         message
       )
-    ).to.throw(RelatedRecordsError, 'errorPhaseBeforeUnsupported');
+    ).to.throw(RelatedRecordsError, 'errorRelationshipMatchFromUserId');
     expect(() =>
       assertValidRelatedCatalog(
         {

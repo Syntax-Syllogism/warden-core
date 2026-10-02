@@ -32,6 +32,7 @@ export type SourceContext = {
   userFields: Record<string, unknown>;
   userFieldMap: Map<string, UserFieldMeta>;
   savedUserId?: string;
+  relatedContext?: Record<string, unknown>;
 };
 
 export type SourceResolution = {
@@ -45,7 +46,7 @@ export type SourceResolution = {
  * A value is "absent" only when it is literally undefined, null, or the empty string.
  * `0` and `false` are values, not absences, so this must never be written as a falsy test.
  */
-const isAbsent = (value: unknown): boolean => value === undefined || value === null || value === '';
+export const isAbsent = (value: unknown): boolean => value === undefined || value === null || value === '';
 
 /**
  * Resolve one configured field source against a canonicalized user.
@@ -58,6 +59,24 @@ export const resolveSource = (expr: SourceExpr, ctx: SourceContext): SourceResol
   const parsed = parseSource(expr.from);
   if (parsed.kind === 'userId') {
     return ctx.savedUserId ? { value: ctx.savedUserId } : { pending: true };
+  }
+  if (parsed.kind === 'context') {
+    if (!Object.hasOwn(ctx.relatedContext ?? {}, parsed.name))
+      return {
+        error: {
+          code: 'errorUnknownContextName',
+          messageArgs: [ctx.relationship, parsed.name],
+        },
+      };
+    const value = ctx.relatedContext?.[parsed.name];
+    return isAbsent(value)
+      ? {
+          error: {
+            code: 'errorRelatedSourceEmpty',
+            messageArgs: [ctx.relationship, ctx.fieldName, `context.${parsed.name}`],
+          },
+        }
+      : { value };
   }
   if (parsed.kind !== 'userField') {
     return {
