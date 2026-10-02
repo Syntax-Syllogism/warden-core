@@ -54,7 +54,7 @@
     "prepack": "npm run clean && npm run build"
   },
   "dependencies": {
-    "@salesforce/core": "^8",
+    "@salesforce/core": "^9",
     "zod": "^4"
   },
   "devDependencies": {
