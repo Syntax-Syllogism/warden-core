@@ -14,10 +14,11 @@ const sortItems = (items: LabelBundle[]): LabelBundle[] =>
     (left.apiName ?? left.label ?? left.id).localeCompare(right.apiName ?? right.label ?? right.id)
   );
 
-export const makeNotice = (key: string, count?: number, items?: LabelBundle[]): LifecycleNotice => ({
+export const makeNotice = (key: string, count?: number, items?: LabelBundle[], detail?: string): LifecycleNotice => ({
   key,
   ...(count === undefined ? {} : { count }),
   ...(items && items.length > 0 ? { items: sortItems(items) } : {}),
+  ...(detail === undefined ? {} : { detail }),
 });
 
 /** `planned` counts as changed: a dry run reports what would change. */
@@ -119,7 +120,10 @@ const renderLabelBundle = (item: LabelBundle): string => {
 };
 
 const renderNoticeLines = (notice: LifecycleNotice, lookup: (key: string, args?: string[]) => string): string[] => [
-  lookup(notice.key, notice.count === undefined ? [] : [String(notice.count)]),
+  lookup(
+    notice.key,
+    notice.detail !== undefined ? [notice.detail] : notice.count === undefined ? [] : [String(notice.count)]
+  ),
   ...(notice.items ?? []).map((item) => `    · ${renderLabelBundle(item)}`),
 ];
 

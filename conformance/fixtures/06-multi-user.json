@@ -22,7 +22,23 @@
     "groupMembers": []
   },
   "expectedPlan": [
-    { "userKey": "alice", "userId": "005000000000006AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Support User", "error": "" },
-    { "userKey": "bob", "userId": "005000000000007AAA", "category": "PermissionSetGroup", "action": "wouldAssign", "status": "planned", "detail": "Service Team", "error": "" }
+    {
+      "userKey": "alice",
+      "userId": "005000000000006AAA",
+      "category": "PermissionSet",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Support User",
+      "error": ""
+    },
+    {
+      "userKey": "bob",
+      "userId": "005000000000007AAA",
+      "category": "PermissionSetGroup",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Service Team",
+      "error": ""
+    }
   ]
 }

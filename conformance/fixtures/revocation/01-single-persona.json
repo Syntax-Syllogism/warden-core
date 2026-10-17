@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "definitions": {
+    "personas": { "personas": { "support": { "permissionSets": ["Support_User"], "publicGroups": ["Support_Group"], "queues": ["Case_Queue"] } } },
+    "users": { "users": [{ "userKey": "alice", "userId": "005user1", "personas": ["support"] }] }
+  },
+  "orgState": {
+    "permissionSets": [{ "id": "0PSsupport", "name": "Support_User", "label": "Support User" }],
+    "permissionSetGroups": [],
+    "groups": [
+      { "id": "00Gpublic", "developerName": "Support_Group", "label": "Support Group", "type": "Regular" },
+      { "id": "00Gqueue", "developerName": "Case_Queue", "label": "Case Queue", "type": "Queue" }
+    ],
+    "permissionSetAssignments": [{ "id": "0PSA1", "userId": "005user1", "permissionSetId": "0PSsupport" }],
+    "groupMembers": [
+      { "id": "0GM1", "userId": "005user1", "groupId": "00Gpublic" },
+      { "id": "0GM2", "userId": "005user1", "groupId": "00Gqueue" }
+    ]
+  },
+  "revocation": { "removePersonas": ["support"] },
+  "expectedPlan": [
+    { "userKey": "alice", "userId": "005user1", "category": "PermissionSet", "action": "wouldRemove", "status": "planned", "detail": "Support User", "error": "" },
+    { "userKey": "alice", "userId": "005user1", "category": "PublicGroup", "action": "wouldRemove", "status": "planned", "detail": "Support Group", "error": "" },
+    { "userKey": "alice", "userId": "005user1", "category": "Queue", "action": "wouldRemove", "status": "planned", "detail": "Case Queue", "error": "" }
+  ]
+}

@@ -6,6 +6,9 @@ const TEXT: Record<string, string> = {
   errorInvalidUserValue: 'Invalid --user value "%s". Expected field:value.',
   errorInvalidAgainstValue: 'Invalid --against value "%s". Expected field:value.',
   errorInvalidUserMatchField: 'Invalid user match field "%s".',
+  errorPersonaSourceRequiresUsers: 'Persona source "%s" requires a users definition so held personas are known.',
+  errorPersonaSourceUnsupported:
+    'Persona source "%s" is not supported by warden-core; the caller must provide held personas.',
   errorDuplicateExternalIdMatch: 'Multiple users matched %s="%s".',
   errorPromptDeclined: 'Operation cancelled.',
   warningPromptTimeout: 'Warning confirmation timed out after 10 seconds.',

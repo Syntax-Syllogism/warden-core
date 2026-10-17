@@ -29,8 +29,11 @@ result data rather than printing.
 
 ## Strip
 
-The `strip` use case plans and applies cleanup for each resolved user. The
-default categories are:
+The `strip` use case plans and applies cleanup for each resolved user. With
+`personas` or `allPersonas` it runs in persona-scoped mode instead, which removes
+only the access those personas grant; see
+[Persona-scoped strip](persona-revocation.md). The rest of this section describes
+full strip. The default categories are:
 
 - non-profile-owned Permission Set assignments;
 - Permission Set Group assignments;

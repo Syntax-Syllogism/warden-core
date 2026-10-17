@@ -18,15 +18,57 @@
       { "id": "0PS000000000004AAA", "name": "Case_Manager", "label": "Case Manager" }
     ],
     "permissionSetGroups": [{ "id": "0PG000000000001AAA", "developerName": "Service_Team", "label": "Service Team" }],
-    "groups": [{ "id": "00G000000000003AAA", "developerName": "Support_Group", "label": "Support Group", "type": "Regular" }],
+    "groups": [
+      { "id": "00G000000000003AAA", "developerName": "Support_Group", "label": "Support Group", "type": "Regular" }
+    ],
     "permissionSetAssignments": [],
     "groupMembers": []
   },
   "expectedPlan": [
-    { "userKey": "alice", "userId": "005000000000002AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Case Manager", "error": "" },
-    { "userKey": "alice", "userId": "005000000000002AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Common Access", "error": "" },
-    { "userKey": "alice", "userId": "005000000000002AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Support User", "error": "" },
-    { "userKey": "alice", "userId": "005000000000002AAA", "category": "PermissionSetGroup", "action": "wouldAssign", "status": "planned", "detail": "Service Team", "error": "" },
-    { "userKey": "alice", "userId": "005000000000002AAA", "category": "PublicGroup", "action": "wouldAssign", "status": "planned", "detail": "Support Group", "error": "" }
+    {
+      "userKey": "alice",
+      "userId": "005000000000002AAA",
+      "category": "PermissionSet",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Case Manager",
+      "error": ""
+    },
+    {
+      "userKey": "alice",
+      "userId": "005000000000002AAA",
+      "category": "PermissionSet",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Common Access",
+      "error": ""
+    },
+    {
+      "userKey": "alice",
+      "userId": "005000000000002AAA",
+      "category": "PermissionSet",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Support User",
+      "error": ""
+    },
+    {
+      "userKey": "alice",
+      "userId": "005000000000002AAA",
+      "category": "PermissionSetGroup",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Service Team",
+      "error": ""
+    },
+    {
+      "userKey": "alice",
+      "userId": "005000000000002AAA",
+      "category": "PublicGroup",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Support Group",
+      "error": ""
+    }
   ]
 }

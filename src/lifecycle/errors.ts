@@ -9,7 +9,9 @@ export type LifecycleErrorCode =
   | 'errorInvalidSnapshot'
   | 'errorPromptDeclined'
   | 'errorAccessScopesMutuallyExclusive'
-  | 'errorVerifyUserMode';
+  | 'errorVerifyUserMode'
+  | 'errorPersonaSourceRequiresUsers'
+  | 'errorPersonaSourceUnsupported';
 
 export class LifecycleError extends WardenError<LifecycleErrorCode> {
   public constructor(code: LifecycleErrorCode, message: string, data?: unknown) {

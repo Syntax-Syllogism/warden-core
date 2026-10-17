@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "definitions": {
+    "personas": { "personas": { "support": { "permissionSetGroups": ["Support_Group"] } } },
+    "users": { "users": [{ "userKey": "alice", "userId": "005user5", "personas": ["support"] }] }
+  },
+  "orgState": {
+    "permissionSets": [],
+    "permissionSetGroups": [{ "id": "0PGsupport", "developerName": "Support_Group", "label": "Support Group" }],
+    "groups": [],
+    "permissionSetAssignments": [{ "id": "0PSAgroup", "userId": "005user5", "permissionSetGroupId": "0PGsupport" }],
+    "groupMembers": []
+  },
+  "revocation": { "removePersonas": ["support"] },
+  "expectedPlan": [
+    { "userKey": "alice", "userId": "005user5", "category": "PermissionSetGroup", "action": "wouldRemove", "status": "planned", "detail": "Support Group", "error": "" }
+  ]
+}

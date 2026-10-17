@@ -27,23 +27,24 @@ Requires Node.js 22 or later.
 
 ## API
 
-| Export | Purpose |
-| --- | --- |
-| `WardenError` | Base class for every error warden-core throws on purpose. Carries a stable `code`, optional structured `data`, and a default English `message`. |
-| `isWardenError(error)` | Structural type guard for `WardenError`; safe across duplicate copies of this package. |
-| `AccessError`, `UserAccessError` | Typed access-audit errors. |
-| `LifecycleError` | Typed lifecycle-operation errors. |
-| `ProvisioningError`, `DefinitionError` | Typed provisioning and definition-reading errors. |
-| `RelatedRecordsError` | Typed related-record catalog errors. |
-| `commandDescriptors` | Metadata and Zod option schemas for the eight callable command use cases. `uiHints(schema)` reads the front-end input hints without coupling callers to Zod internals. |
-| `provision`, `freeze`, `unfreeze`, `strip`, `restore` | Write use cases exposing `plan()` and `apply()`. Plans are plain JSON-safe data and carry warnings for the caller to present before confirmation. |
-| `access`, `diff`, `snapshot` | Read use cases exposing `run()`. Diff accepts `verify` for persona conformance results; snapshot returns the file object and the caller owns serialization and filesystem output. |
-| File-format schemas and parsers | Zod schemas, JSON-text validators, and inferred types for persona, users, related-catalog, and snapshot files. |
-| `conformanceFixtureSchema`, `planFromState` | The versioned fixture contract and pure v1 additive reconciliation planner. |
-| Lifecycle, access, provisioning, CSV, snapshot, and rendering functions | Framework-free domain operations used by Warden consumers. |
-| `renderMessages`, `renderMessagesFor(commandId)`, `MessageLookup` | Default English text for renderer keys, with command-specific summary wording for diff and provision. Callers can supply another lookup. |
-| `renderProvisionHuman`, `renderAccessResult` | Pure human output matching the CLI's provision and access displays. |
-| `snapshotToLifecycleResult` | Adapts a captured snapshot for `renderLifecycleResult` and `renderSnapshotCsv`. |
+| Export                                                                  | Purpose                                                                                                                                                                           |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WardenError`                                                           | Base class for every error warden-core throws on purpose. Carries a stable `code`, optional structured `data`, and a default English `message`.                                   |
+| `isWardenError(error)`                                                  | Structural type guard for `WardenError`; safe across duplicate copies of this package.                                                                                            |
+| `AccessError`, `UserAccessError`                                        | Typed access-audit errors.                                                                                                                                                        |
+| `LifecycleError`                                                        | Typed lifecycle-operation errors.                                                                                                                                                 |
+| `ProvisioningError`, `DefinitionError`                                  | Typed provisioning and definition-reading errors.                                                                                                                                 |
+| `RelatedRecordsError`                                                   | Typed related-record catalog errors.                                                                                                                                              |
+| `commandDescriptors`                                                    | Metadata and Zod option schemas for the eight callable command use cases. `uiHints(schema)` reads the front-end input hints without coupling callers to Zod internals.            |
+| `provision`, `freeze`, `unfreeze`, `strip`, `restore`                   | Write use cases exposing `plan()` and `apply()`. Plans are plain JSON-safe data and carry warnings for the caller to present before confirmation.                                 |
+| `access`, `diff`, `snapshot`                                            | Read use cases exposing `run()`. Diff accepts `verify` for persona conformance results; snapshot returns the file object and the caller owns serialization and filesystem output. |
+| File-format schemas and parsers                                         | Zod schemas, JSON-text validators, and inferred types for persona, users, related-catalog, snapshot, and conformance files.                                                       |
+| `conformanceFixtureSchema`, `planFromState`                             | The versioned fixture contract and pure v1 additive reconciliation planner.                                                                                                       |
+| `revocationFixtureSchema`, `planRevocationFromState`, `planPersonaRevocation` | The persona-revocation fixture contract and pure definition-based removal planner, including shared-target keeps and no-op rows.                                              |
+| Lifecycle, access, provisioning, CSV, snapshot, and rendering functions | Framework-free domain operations used by Warden consumers.                                                                                                                        |
+| `renderMessages`, `renderMessagesFor(commandId)`, `MessageLookup`       | Default English text for renderer keys, with command-specific summary wording for diff and provision. Callers can supply another lookup.                                          |
+| `renderProvisionHuman`, `renderAccessResult`                            | Pure human output matching the CLI's provision and access displays.                                                                                                               |
+| `snapshotToLifecycleResult`                                             | Adapts a captured snapshot for `renderLifecycleResult` and `renderSnapshotCsv`.                                                                                                   |
 
 ```ts
 import { isWardenError } from '@syntax-syllogism/warden-core';
@@ -96,18 +97,18 @@ whitespace-only names fail runtime catalog validation with
 The legacy `errorPhaseBeforeUnsupported` code remains in the type contract
 for compatibility, but before relationships are now supported.
 
-| Code | Thrown by |
-| --- | --- |
-| `errorUnsupportedAccessType`, `errorInvalidTarget`, `errorFieldTargetMustBeQualified`, `errorObjectNotFound`, `errorFieldNotFound`, `errorApexClassNotFound`, `errorVisualforcePageNotFound`, `errorCustomPermissionNotFound`, `errorTabNotFound`, `errorRecordTypeTargetMustBeQualified`, `errorMasterRecordTypeUnsupported`, `errorRecordTypeNotFound`, `errorRecordTypeAmbiguous`, `errorRecordTypeInactive`, `errorRecordTypeMetadataReadFailed`, `errorAccessQueryFailed` | Access audit and target resolution. |
-| `errorInvalidCsv`, `errorInvalidJson`, `errorInvalidPersonaDefinition`, `errorMissingUserFieldMap`, `errorPersonasWithoutDefinition` | Definition readers. |
-| `errorInvalidJson`, `errorInvalidUserMatchField`, `errorInvalidUserValue`, `errorInvalidAgainstValue`, `errorInvalidAgainstMatchField`, `errorInvalidSnapshot`, `errorPromptDeclined`, `errorAccessScopesMutuallyExclusive`, `errorVerifyUserMode` | Lifecycle targeting, snapshot validation, access scope validation, and diff verification. |
-| `errorInvalidRelatedCatalog`, `errorRelationshipInvalidDefinition`, `errorRelationshipInvalidSobject`, `errorRelationshipMissingPhase`, `errorRelationshipInvalidPhase`, `errorPhaseBeforeUnsupported`, `errorLinkUserUnsupported`, `errorRelationshipInvalidLinkUser`, `errorRelatedContextUnsupported`, `errorRelationshipInvalidMatch`, `errorRelationshipMatchFromUserId`, `errorRelationshipInvalidFields`, `errorRelationshipInvalidSource`, `errorRelationshipInvalidFrom`, `errorRelationshipUnknownUserField`, `errorRelationshipUnwritableField`, `errorRelationshipInvalidMode`, `errorRelationshipInvalidRecordType` | Related-record catalog validation. |
-| `errorDuplicateExternalIdMatch`, `errorMissingRequiredFields`, `errorMissingSaveId`, `errorPromptDeclined`, `errorInvalidJson`, `errorInvalidPersonaDefinition`, `errorPersonasWithoutDefinition` | Provisioning execution and planning. |
-| `schema-invalid`, `schema-version-unsupported` | Structural file-format validation. `data.issues` contains `{ path, message }` entries. |
+| Code                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Thrown by                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `errorUnsupportedAccessType`, `errorInvalidTarget`, `errorFieldTargetMustBeQualified`, `errorObjectNotFound`, `errorFieldNotFound`, `errorApexClassNotFound`, `errorVisualforcePageNotFound`, `errorCustomPermissionNotFound`, `errorTabNotFound`, `errorRecordTypeTargetMustBeQualified`, `errorMasterRecordTypeUnsupported`, `errorRecordTypeNotFound`, `errorRecordTypeAmbiguous`, `errorRecordTypeInactive`, `errorRecordTypeMetadataReadFailed`, `errorAccessQueryFailed`                                                                                                                                                   | Access audit and target resolution.                                                       |
+| `errorInvalidCsv`, `errorInvalidJson`, `errorInvalidPersonaDefinition`, `errorMissingUserFieldMap`, `errorPersonasWithoutDefinition`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Definition readers.                                                                       |
+| `errorInvalidJson`, `errorInvalidUserMatchField`, `errorInvalidUserValue`, `errorInvalidAgainstValue`, `errorInvalidAgainstMatchField`, `errorInvalidSnapshot`, `errorPromptDeclined`, `errorAccessScopesMutuallyExclusive`, `errorVerifyUserMode`                                                                                                                                                                                                                                                                                                                                                                               | Lifecycle targeting, snapshot validation, access scope validation, and diff verification. |
+| `errorInvalidRelatedCatalog`, `errorRelationshipInvalidDefinition`, `errorRelationshipInvalidSobject`, `errorRelationshipMissingPhase`, `errorRelationshipInvalidPhase`, `errorPhaseBeforeUnsupported`, `errorLinkUserUnsupported`, `errorRelationshipInvalidLinkUser`, `errorRelatedContextUnsupported`, `errorRelationshipInvalidMatch`, `errorRelationshipMatchFromUserId`, `errorRelationshipInvalidFields`, `errorRelationshipInvalidSource`, `errorRelationshipInvalidFrom`, `errorRelationshipUnknownUserField`, `errorRelationshipUnwritableField`, `errorRelationshipInvalidMode`, `errorRelationshipInvalidRecordType` | Related-record catalog validation.                                                        |
+| `errorDuplicateExternalIdMatch`, `errorMissingRequiredFields`, `errorMissingSaveId`, `errorPromptDeclined`, `errorInvalidJson`, `errorInvalidPersonaDefinition`, `errorPersonasWithoutDefinition`                                                                                                                                                                                                                                                                                                                                                                                                                                | Provisioning execution and planning.                                                      |
+| `schema-invalid`, `schema-version-unsupported`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Structural file-format validation. `data.issues` contains `{ path, message }` entries.    |
 
 ## File formats and schemas
 
-The five JSON file formats are defined by the exported Zod schemas and the
+The JSON file formats are defined by the exported Zod schemas and the
 generated Draft 2020-12 schemas. See the detailed
 [file-format schema guide](docs/spec-schemas.md)
 for the full structural contract, parser results, versioning behavior, and
@@ -124,6 +125,8 @@ artifact-generation workflow.
   `snapshotVersion: 1`.
 - [conformance fixture](schemas/conformance-fixture.schema.json): the
   engine-neutral definitions + simulated org state + expected plan contract.
+- [revocation fixture](schemas/revocation-fixture.schema.json): persona
+  definitions, simulated holdings, removal request, and expected revocation plan.
 
 The canonical conformance fixtures are published under
 [`conformance/`](conformance/README.md). They are the executable spec shared

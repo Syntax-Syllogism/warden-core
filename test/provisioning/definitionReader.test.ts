@@ -93,6 +93,31 @@ describe('definition reader', () => {
     }
   });
 
+  it('resolves users documents and persona files independently', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'warden-definition-reader-'));
+    const personasPath = join(directory, 'personas.json');
+    try {
+      await writeFile(personasPath, JSON.stringify({ personas: { ops: {} } }));
+
+      const definitions = await loadValidatedDefinitions(
+        {
+          usersDoc: { users: [{ FederationIdentifier: 'A001', personas: ['ops'] }] },
+          personasPath,
+        },
+        new Map(),
+        messages
+      );
+
+      expect(definitions.usersDoc).to.deep.equal({
+        users: [{ FederationIdentifier: 'A001', personas: ['ops'] }],
+      });
+      expect(definitions.personasDoc).to.deep.equal({ personas: { ops: {} } });
+      expect(definitions.personasSupplied).to.equal(true);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it('validates persona files when reading provision definitions directly', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'warden-definition-reader-'));
     const usersPath = join(directory, 'users.json');

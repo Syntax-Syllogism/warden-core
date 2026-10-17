@@ -12,6 +12,8 @@ const text = (label: string, extra: Partial<UiHint> = {}): z.ZodString =>
 
 const boolean = (label: string): z.ZodBoolean => field(z.boolean(), { kind: 'boolean', label });
 
+const list = (label: string): z.ZodArray<z.ZodString> => field(z.array(z.string()), { kind: 'string', label });
+
 const enumValue = (values: [string, ...string[]], label: string): z.ZodType<string> =>
   field(z.enum(values), { kind: 'enum', label });
 
@@ -50,16 +52,28 @@ export const unfreezeOptionsSchema = z.object({
   ...targetFields,
 });
 
-export const stripOptionsSchema = z.object({
-  ...targetFields,
-  noFreeze: boolean('Do not freeze users').default(false),
-  noDeactivate: boolean('Do not deactivate users').default(false),
-  keepPermsets: boolean('Keep permission sets').default(false),
-  keepPermsetGroups: boolean('Keep permission set groups').default(false),
-  keepPublicGroups: boolean('Keep public groups').default(false),
-  keepQueues: boolean('Keep queues').default(false),
-  keepLicenses: boolean('Keep permission set licenses').default(false),
-});
+export const stripOptionsSchema = z
+  .object({
+    ...targetFields,
+    personas: list('Persona API names to remove').optional(),
+    allPersonas: boolean('Remove all personas').default(false),
+    personasPath: file('Personas definition file').optional(),
+    personasDoc: document('Personas definition document').optional(),
+    personaSource: enumValue(['file', 'org'], 'Persona source').default('file'),
+    freeze: boolean('Freeze users').default(false),
+    deactivate: boolean('Deactivate users').default(false),
+    noFreeze: boolean('Do not freeze users').default(false),
+    noDeactivate: boolean('Do not deactivate users').default(false),
+    keepPermsets: boolean('Keep permission sets').default(false),
+    keepPermsetGroups: boolean('Keep permission set groups').default(false),
+    keepPublicGroups: boolean('Keep public groups').default(false),
+    keepQueues: boolean('Keep queues').default(false),
+    keepLicenses: boolean('Keep permission set licenses').default(false),
+  })
+  .refine(({ personas, allPersonas }) => !(allPersonas && personas && personas.length > 0), {
+    message: 'personas and allPersonas are mutually exclusive.',
+    path: ['personas'],
+  });
 
 export const diffOptionsSchema = z.object({
   mode: enumValue(['persona', 'user'], 'Diff mode'),
@@ -98,9 +112,19 @@ export const restoreOptionsSchema = z.object({
 export type ProvisionOptions = Omit<z.infer<typeof provisionOptionsSchema>, 'cleanupOnFailure'> & {
   cleanupOnFailure?: boolean;
 };
+export type LedgerTargetProvenance = {
+  userId: string;
+  persona: string;
+  targetId: string;
+};
 export type FreezeOptions = z.infer<typeof freezeOptionsSchema>;
 export type UnfreezeOptions = z.infer<typeof unfreezeOptionsSchema>;
-export type StripOptions = z.infer<typeof stripOptionsSchema>;
+type ParsedStripOptions = z.infer<typeof stripOptionsSchema>;
+export type StripOptions = Omit<ParsedStripOptions, 'allPersonas' | 'personaSource' | 'freeze' | 'deactivate'> &
+  Partial<Pick<ParsedStripOptions, 'allPersonas' | 'personaSource' | 'freeze' | 'deactivate'>> & {
+    /** Caller-supplied ledger rows used for per-user, per-persona provenance warnings. */
+    ledgerTargets?: LedgerTargetProvenance[];
+  };
 export type DiffOptions = z.infer<typeof diffOptionsSchema>;
 export type AccessOptions = z.infer<typeof accessOptionsSchema>;
 export type SnapshotOptions = z.infer<typeof snapshotOptionsSchema>;

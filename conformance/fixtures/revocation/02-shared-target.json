@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "definitions": {
+    "personas": { "personas": {
+      "support": { "permissionSets": ["Shared", "Support_Only"] },
+      "sales": { "permissionSets": ["Shared"] }
+    } },
+    "users": { "users": [{ "userKey": "alice", "userId": "005user2", "personas": ["support", "sales"] }] }
+  },
+  "orgState": {
+    "permissionSets": [
+      { "id": "0PSshared", "name": "Shared", "label": "Shared User" },
+      { "id": "0PSsupport", "name": "Support_Only", "label": "Support Only" }
+    ],
+    "permissionSetGroups": [], "groups": [],
+    "permissionSetAssignments": [
+      { "id": "0PSAshared", "userId": "005user2", "permissionSetId": "0PSshared" },
+      { "id": "0PSAsupport", "userId": "005user2", "permissionSetId": "0PSsupport" }
+    ],
+    "groupMembers": []
+  },
+  "revocation": { "removePersonas": ["support"] },
+  "expectedPlan": [
+    { "userKey": "alice", "userId": "005user2", "category": "PermissionSet", "action": "keptByOtherPersona", "status": "kept", "detail": "Shared User (kept by sales)", "error": "" },
+    { "userKey": "alice", "userId": "005user2", "category": "PermissionSet", "action": "wouldRemove", "status": "planned", "detail": "Support Only", "error": "" }
+  ]
+}

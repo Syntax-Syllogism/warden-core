@@ -22,15 +22,15 @@ the component Permission Set through `viaPermissionSetId` and
 
 The validators accept these target types:
 
-| Type | Target syntax | Access represented |
-| --- | --- | --- |
-| `field` | `ObjectApiName.FieldApiName` | Read and edit |
-| `object` | `ObjectApiName` | Read, create, edit, delete, view-all, modify-all |
-| `apex-class` | Apex class name | Enabled |
-| `vf-page` | Visualforce page name | Enabled |
-| `custom-permission` | Custom permission DeveloperName | Enabled |
-| `tab` | `TabDefinition.DurableId` | Visibility |
-| `record-type` | `ObjectApiName.RecordTypeDeveloperName` | Visible and default |
+| Type                | Target syntax                           | Access represented                               |
+| ------------------- | --------------------------------------- | ------------------------------------------------ |
+| `field`             | `ObjectApiName.FieldApiName`            | Read and edit                                    |
+| `object`            | `ObjectApiName`                         | Read, create, edit, delete, view-all, modify-all |
+| `apex-class`        | Apex class name                         | Enabled                                          |
+| `vf-page`           | Visualforce page name                   | Enabled                                          |
+| `custom-permission` | Custom permission DeveloperName         | Enabled                                          |
+| `tab`               | `TabDefinition.DurableId`               | Visibility                                       |
+| `record-type`       | `ObjectApiName.RecordTypeDeveloperName` | Visible and default                              |
 
 Field and record-type targets must be qualified. The master record type is not
 supported. Target validation canonicalizes object and field names from the

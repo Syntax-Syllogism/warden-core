@@ -126,6 +126,39 @@ describe('lifecycle output', () => {
     expect(output).to.not.include('matched Username');
   });
 
+  it('renders persona skip details through defined message keys', () => {
+    const output = renderLifecycleResult(
+      {
+        summary: { total: 1, changed: 0, unchanged: 1, failed: 0 },
+        users: [
+          {
+            key: 'Username:alice@example.test',
+            status: 'unchanged',
+            actions: [],
+            skipped: [
+              makeNotice('keptByOtherPersona', undefined, undefined, 'Shared (kept by sales)'),
+              makeNotice('alreadyAbsent', undefined, undefined, 'Support'),
+              makeNotice('skippedPermissionSets', 1),
+            ],
+            warnings: [],
+            errors: [],
+          },
+        ],
+      },
+      (key, args = []) =>
+        ({
+          keptByOtherPersona: `Kept ${args[0]}.`,
+          alreadyAbsent: `Already absent: ${args[0]}.`,
+          skippedPermissionSets: `Skipped ${args[0]} permission set removals.`,
+          'info.summary': `summary ${args.join('/')}`,
+        }[key] ?? key)
+    );
+    expect(output).to.include('skipped: Kept Shared (kept by sales).');
+    expect(output).to.include('skipped: Already absent: Support.');
+    expect(output).to.include('skipped: Skipped 1 permission set removals.');
+    expect(output).not.to.include('skipped: keptByOtherPersona');
+  });
+
   it('renders one row per lifecycle action item and retains empty and failed users', () => {
     const csv = renderRestoreCsv({
       summary: { total: 3, changed: 1, unchanged: 1, failed: 1 },

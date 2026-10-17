@@ -5,8 +5,11 @@ This directory contains the canonical, versioned JSON fixtures shipped in the
 semantics, deterministic ordering, and public API are documented in the
 [published conformance guide](https://github.com/Syntax-Syllogism/warden-core/blob/release/docs/conformance.md).
 
-The generated structural contract is
-[`schemas/conformance-fixture.schema.json`](../schemas/conformance-fixture.schema.json).
+The generated structural contracts are
+[`schemas/conformance-fixture.schema.json`](../schemas/conformance-fixture.schema.json)
+for v1 reconciliation fixtures and
+[`schemas/revocation-fixture.schema.json`](../schemas/revocation-fixture.schema.json)
+for persona revocation fixtures, which live in `fixtures/revocation/`.
 
 ## Adding a fixture
 

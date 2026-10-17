@@ -1,7 +1,7 @@
 {
   "name": "@syntax-syllogism/warden-core",
   "description": "Shared Warden engine: the user-lifecycle library behind the warden CLI and VS Code extension (and a possible future SFDX package).",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "author": "Jake Richter <j.p.richter@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/Syntax-Syllogism/warden-core#readme",
@@ -51,24 +51,30 @@
     "test:only": "TS_NODE_PROJECT=test/tsconfig.json mocha \"test/**/*.test.ts\"",
     "test": "npm run typecheck && npm run lint && npm run format:check && c8 npm run test:only",
     "pack:check": "node scripts/check-pack.mjs",
-    "prepack": "npm run clean && npm run build"
+    "prepack": "npm run clean && npm run build",
+    "prepare": "husky"
   },
   "dependencies": {
     "@salesforce/core": "^8",
     "zod": "^4"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
     "@salesforce/dev-config": "^4.1.0",
     "@salesforce/prettier-config": "^0.0.4",
-    "ajv": "^8.18.0",
     "@types/chai": "^4.3.14",
     "@types/mocha": "^10.0.6",
     "@types/node": "^22",
     "@types/sinon": "^10.0.20",
+    "ajv": "^8.18.0",
     "c8": "^11.0.0",
     "chai": "^4.3.10",
     "eslint": "^8.57.0",
     "eslint-config-salesforce-typescript": "^3.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "markdownlint-cli2": "^0.23.3",
     "mocha": "^10.4.0",
     "prettier": "^2.8.8",
     "sinon": "^10.0.0",

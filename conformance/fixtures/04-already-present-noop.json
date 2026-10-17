@@ -8,7 +8,14 @@
     "permissionSets": [{ "id": "0PS000000000006AAA", "name": "Support_User", "label": "Support User" }],
     "permissionSetGroups": [],
     "groups": [],
-    "permissionSetAssignments": [{ "id": "0PA000000000001AAA", "userId": "005000000000004AAA", "permissionSetId": "0PS000000000006AAA", "permissionSetGroupId": null }],
+    "permissionSetAssignments": [
+      {
+        "id": "0PA000000000001AAA",
+        "userId": "005000000000004AAA",
+        "permissionSetId": "0PS000000000006AAA",
+        "permissionSetGroupId": null
+      }
+    ],
     "groupMembers": []
   },
   "expectedPlan": []

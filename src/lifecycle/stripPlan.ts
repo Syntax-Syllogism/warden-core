@@ -1,3 +1,4 @@
+import type { RevocationPlanRow } from '../spec/conformanceFixture.js';
 import {
   groupMemberLabel,
   type GroupMemberRow,
@@ -45,6 +46,7 @@ export type StripTargetState = {
   result: LifecycleUserResult;
   steps: StripStep[];
   hasDml: boolean;
+  revocationRows?: RevocationPlanRow[];
 };
 
 export type TargetAssignmentRows = {
@@ -145,7 +147,7 @@ export const STRIP_CATEGORIES = [
   }),
 ] as const;
 
-const planFreezeState = (
+export const planFreezeState = (
   result: LifecycleUserResult,
   loginRow: UserLoginRow | undefined,
   flags: StripFlags,
@@ -212,7 +214,7 @@ const planCategory = <Row extends StripCategoryRow>(
   ];
 };
 
-const planDeactivateState = (
+export const planDeactivateState = (
   result: LifecycleUserResult,
   target: { Id: string; IsActive: boolean },
   flags: StripFlags

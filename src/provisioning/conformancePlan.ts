@@ -4,7 +4,10 @@ import type {
   ConformanceDefinitions,
   ConformanceOrgState,
   ConformancePlanRow,
+  RevocationFixture,
+  RevocationPlanRow,
 } from '../spec/conformanceFixture.js';
+import { planPersonaRevocation } from '../lifecycle/personaRevokePlan.js';
 import { computeAssignmentDeltaFromState, type ResolvedRefs } from './assignmentPlan.js';
 import { mergePersonas, type PersonaDefinition } from './planner.js';
 
@@ -196,4 +199,31 @@ export const planFromState = (
     }
   }
   return rows.sort(sortRows);
+};
+
+/** Compute a persona revocation plan from a versioned engine-neutral fixture. */
+export const planRevocationFromState = (fixture: RevocationFixture): RevocationPlanRow[] => {
+  const { refs, labels } = referencesFor(fixture.orgState);
+  refs.labels = Object.fromEntries(Object.entries(labels).map(([id, label]) => [id, { id, label }]));
+  return fixture.definitions.users.users
+    .flatMap(
+      (user) =>
+        planPersonaRevocation({
+          userKey: user.userKey,
+          userId: user.userId,
+          personas: fixture.definitions.personas.personas,
+          heldPersonas: user.personas ?? [],
+          removePersonas: fixture.revocation.removePersonas,
+          refs,
+          assignmentRows: assignmentRowsForUser(fixture.orgState, user.userId),
+          membershipRows: groupMembersForUser(fixture.orgState, user.userId),
+        }).rows
+    )
+    .sort(
+      (left, right) =>
+        compareText(left.userKey, right.userKey) ||
+        categoryOrder.indexOf(left.category) - categoryOrder.indexOf(right.category) ||
+        compareText(left.detail, right.detail) ||
+        compareText(left.action, right.action)
+    );
 };

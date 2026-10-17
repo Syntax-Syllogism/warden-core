@@ -21,7 +21,14 @@ import { loadAssignmentState, type AssignmentState, type UserLoginRow } from './
 import { runAssignmentCreates, runRecordUpdate } from './lifecycle/dmlRunner.js';
 import { buildSnapshotFile, type UserSnapshotFile, type UserSnapshotEntry } from './lifecycle/snapshotState.js';
 import { parseSnapshot } from './spec/parse.js';
-import { buildTargetState, type StripTargetState } from './lifecycle/stripPlan.js';
+import {
+  buildTargetState,
+  planDeactivateState,
+  planFreezeState,
+  type StripFlags,
+  type StripTargetState,
+} from './lifecycle/stripPlan.js';
+import { planPersonaRevocation } from './lifecycle/personaRevokePlan.js';
 import { applyStripState } from './lifecycle/stripApply.js';
 import { FREEZE, UNFREEZE, type FreezeDirection } from './lifecycle/freezeState.js';
 import {
@@ -34,6 +41,7 @@ import {
   snapshotOptionsSchema,
   restoreOptionsSchema,
   type ProvisionOptions,
+  type LedgerTargetProvenance,
   type FreezeOptions,
   type UnfreezeOptions,
   type StripOptions,
@@ -52,7 +60,7 @@ import {
   type WriteUseCase,
 } from './useCase.js';
 import type { ProvisionResult } from './provisioning/provisionUserUseCase.js';
-import { resolveDefinitions } from './provisioning/definitionReader.js';
+import { loadValidatedDefinitions, resolveDefinitions } from './provisioning/definitionReader.js';
 import { buildUserPlans, type UserPlan, type OrderedUserResult } from './provisioning/userPlan.js';
 import { resolveReferences } from './provisioning/referenceResolution.js';
 import type { ResolvedRefs } from './provisioning/assignmentPlan.js';
@@ -80,6 +88,7 @@ import { deriveMyDomain } from './provisioning/planner.js';
 import { provisioningMessage } from './provisioning/messages.js';
 import { summarize, toUserResult } from './provisioning/userPlan.js';
 import { soqlIn } from './shared/sfUtils.js';
+import type { RevocationPlanRow } from './spec/conformanceFixture.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -255,6 +264,7 @@ export type StripPlan = {
   errors: TargetError[];
   preview: LifecycleResult;
   warnings: string[];
+  revocationRows?: RevocationPlanRow[];
 };
 
 const stripFlags = (options: StripOptions): Record<string, unknown> => ({
@@ -270,7 +280,194 @@ const stripFlags = (options: StripOptions): Record<string, unknown> => ({
   'keep-public-groups': options.keepPublicGroups,
   'keep-queues': options.keepQueues,
   'keep-licenses': options.keepLicenses,
+  persona: options.personas,
+  'all-personas': options.allPersonas,
+  'persona-source': options.personaSource,
 });
+
+const isPersonaMode = (options: StripOptions): boolean =>
+  options.allPersonas === true || (options.personas !== undefined && options.personas.length > 0);
+
+const userRowMatchesTarget = (row: Record<string, unknown>, target: ResolvedTargetUser): boolean => {
+  const targetValue = target.value;
+  const matchField = typeof row.match === 'string' && row.match.length > 0 ? row.match : target.field;
+  const value = Object.entries(row).find(([key]) => key.toLowerCase() === matchField.toLowerCase())?.[1];
+  return typeof value === 'string' && value === targetValue;
+};
+
+const heldPersonasFromFile = (usersDoc: Record<string, unknown>, target: ResolvedTargetUser): string[] => {
+  const users = usersDoc.users;
+  if (!Array.isArray(users)) return [];
+  const row = users.find((candidate): candidate is Record<string, unknown> =>
+    Boolean(
+      candidate && typeof candidate === 'object' && userRowMatchesTarget(candidate as Record<string, unknown>, target)
+    )
+  );
+  return Array.isArray(row?.personas) ? row.personas.filter((name): name is string => typeof name === 'string') : [];
+};
+
+const stripFlagsForPersona = (options: StripOptions, dryRun: boolean): StripFlags => ({
+  ...stripFlags(options),
+  'no-freeze': options.freeze !== true || options.noFreeze === true,
+  'no-deactivate': options.deactivate !== true || options.noDeactivate === true,
+  'dry-run': dryRun,
+});
+
+const actionKeyForCategory = (category: RevocationPlanRow['category'], dryRun: boolean): string => {
+  if (category === 'PermissionSet') return dryRun ? 'wouldRemovePermissionSet' : 'removedPermissionSet';
+  if (category === 'PermissionSetGroup') return dryRun ? 'wouldRemovePermissionSetGroup' : 'removedPermissionSetGroup';
+  if (category === 'PublicGroup') return dryRun ? 'wouldRemovePublicGroupMember' : 'removedPublicGroupMember';
+  return dryRun ? 'wouldRemoveQueueMember' : 'removedQueueMember';
+};
+
+const keepFlagForCategory: Record<RevocationPlanRow['category'], keyof StripOptions> = {
+  PermissionSet: 'keepPermsets',
+  PermissionSetGroup: 'keepPermsetGroups',
+  PublicGroup: 'keepPublicGroups',
+  Queue: 'keepQueues',
+};
+
+const buildPersonaTargetState = (options: {
+  target: ResolvedTargetUser;
+  loginRows: UserLoginRow[];
+  rows: AssignmentState;
+  refs: ResolvedRefs;
+  personas: Record<string, PersonaDefinition>;
+  heldPersonas: string[];
+  removePersonas: string[] | 'all';
+  flags: StripFlags;
+  ledgerTargets?: ReadonlyMap<string, ReadonlySet<string>>;
+}): StripTargetState => {
+  const { target, loginRows, rows, refs, personas, heldPersonas, removePersonas, flags, ledgerTargets } = options;
+  const result = resolvedTargetResult(target, loginRows[0]);
+  const revocation = planPersonaRevocation({
+    userKey: target.key,
+    userId: target.Id,
+    personas,
+    heldPersonas,
+    removePersonas,
+    refs,
+    assignmentRows: rows.psaByUserId.get(target.Id) ?? [],
+    membershipRows: rows.groupByUserId.get(target.Id) ?? [],
+    flags,
+    ledgerTargets,
+  });
+  result.warnings.push(...revocation.warnings);
+
+  if (removePersonas !== 'all') {
+    for (const persona of removePersonas) {
+      if (!heldPersonas.includes(persona)) result.warnings.push(`personaNotHeld: ${persona} for ${target.key}.`);
+    }
+  }
+  const dryRun = flags['dry-run'] === true;
+  const noticeItemsByCategory = new Map<RevocationPlanRow['category'], LabelBundle[]>();
+  for (const planRow of revocation.rows) {
+    if (planRow.action === 'unresolved') {
+      result.errors.push(planRow.error);
+      continue;
+    }
+    const item = Object.values(refs.labels ?? {}).find((candidate) => {
+      const values = [candidate.label, candidate.apiName, candidate.id];
+      const detail = planRow.detail.split(' (kept by ', 1)[0];
+      return values.includes(detail) || values.includes(planRow.detail);
+    });
+    if (planRow.action === 'keptByOtherPersona') {
+      result.skipped.push(makeNotice('keptByOtherPersona', undefined, undefined, planRow.detail));
+      continue;
+    }
+    if (planRow.action === 'alreadyAbsent') {
+      result.skipped.push(makeNotice('alreadyAbsent', undefined, undefined, planRow.detail));
+      continue;
+    }
+    if (options.flags[keepFlagForCategory[planRow.category]] === true) {
+      const skipKey =
+        planRow.category === 'PermissionSet'
+          ? 'skippedPermissionSets'
+          : planRow.category === 'PermissionSetGroup'
+          ? 'skippedPermissionSetGroups'
+          : planRow.category === 'PublicGroup'
+          ? 'skippedPublicGroups'
+          : 'skippedQueues';
+      result.skipped.push(makeNotice(skipKey, 1, item ? [item] : undefined));
+      continue;
+    }
+    if (dryRun) {
+      result.status = 'planned';
+      const items = noticeItemsByCategory.get(planRow.category) ?? [];
+      if (item) items.push(item);
+      noticeItemsByCategory.set(planRow.category, items);
+    }
+  }
+  for (const [category, items] of noticeItemsByCategory.entries())
+    result.actions.push(makeNotice(actionKeyForCategory(category, true), items.length, items));
+
+  const steps = [
+    ...planFreezeState(result, loginRows[0], flags),
+    ...revocation.steps,
+    ...planDeactivateState(result, target, flags),
+  ];
+  return { target, result, steps, hasDml: steps.length > 0, revocationRows: revocation.rows };
+};
+
+const ledgerTargetsForUser = (
+  ledgerTargets: LedgerTargetProvenance[] | undefined,
+  target: ResolvedTargetUser,
+  heldPersonas: string[],
+  removePersonas: string[] | 'all'
+): ReadonlyMap<string, ReadonlySet<string>> | undefined => {
+  if (!ledgerTargets) return undefined;
+  const removed = new Set(removePersonas === 'all' ? heldPersonas : removePersonas);
+  const targetsByPersona = new Map<string, Set<string>>();
+  for (const entry of ledgerTargets) {
+    if (entry.userId !== target.Id || !removed.has(entry.persona)) continue;
+    const targets = targetsByPersona.get(entry.persona) ?? new Set<string>();
+    targets.add(entry.targetId);
+    targetsByPersona.set(entry.persona, targets);
+  }
+  return targetsByPersona;
+};
+
+const personaDefinitionsForStrip = async (
+  conn: Connection,
+  options: StripOptions,
+  fieldMap: Awaited<ReturnType<typeof describeUserFields>>
+): Promise<{ personas: Record<string, PersonaDefinition>; usersDoc: Record<string, unknown> }> => {
+  const personaSource = options.personaSource ?? 'file';
+  if (personaSource === 'org')
+    throw new LifecycleError(
+      'errorPersonaSourceUnsupported',
+      lifecycleMessage('errorPersonaSourceUnsupported', [personaSource]),
+      { personaSource, reason: 'org-held-persona-loader-is-owned-by-the-caller' }
+    );
+  if (!options.usersDoc && !options.usersPath)
+    throw new LifecycleError(
+      'errorPersonaSourceRequiresUsers',
+      lifecycleMessage('errorPersonaSourceRequiresUsers', [personaSource]),
+      { personaSource, required: 'usersDoc-or-usersPath' }
+    );
+  if (options.usersDoc ?? options.usersPath) {
+    const definitions = await loadValidatedDefinitions(
+      {
+        usersDoc: options.usersDoc,
+        personasDoc: options.personasDoc,
+        usersPath: options.usersPath,
+        personasPath: options.personasPath,
+        inputFormat: options.inputFormat as 'json' | 'csv' | undefined,
+        csvListDelimiter: options.csvListDelimiter,
+      },
+      fieldMap
+    );
+    return {
+      personas: definitions.personasDoc.personas as Record<string, PersonaDefinition>,
+      usersDoc: definitions.usersDoc,
+    };
+  }
+  throw new LifecycleError(
+    'errorPersonaSourceRequiresUsers',
+    lifecycleMessage('errorPersonaSourceRequiresUsers', [personaSource]),
+    { personaSource, required: 'usersDoc-or-usersPath' }
+  );
+};
 
 const makeStripPlan = async (conn: Connection, options: StripOptions, ctx?: UseCaseContext): Promise<StripPlan> => {
   checkCancelled(ctx);
@@ -281,6 +478,62 @@ const makeStripPlan = async (conn: Connection, options: StripOptions, ctx?: UseC
     selection.targets.map((target) => target.Id)
   );
   const flags = stripFlags(options);
+  if (isPersonaMode(options)) {
+    const definitions = await personaDefinitionsForStrip(conn, options, fieldMap);
+    const refs = await resolveReferences(conn, definitions.personas, []);
+    const liveFlags = stripFlagsForPersona(options, false);
+    const previewFlags = stripFlagsForPersona(options, true);
+    const states = selection.targets.map((target) => {
+      const heldPersonas = heldPersonasFromFile(definitions.usersDoc, target);
+      const removePersonas = options.allPersonas ? 'all' : options.personas ?? [];
+      const assignmentRows = {
+        userLoginByUserId: new Map([[target.Id, stateMaps.userLoginByUserId.get(target.Id) ?? []]]),
+        psaByUserId: new Map([[target.Id, stateMaps.psaByUserId.get(target.Id) ?? []]]),
+        groupByUserId: new Map([[target.Id, stateMaps.groupByUserId.get(target.Id) ?? []]]),
+        pslByUserId: new Map([[target.Id, stateMaps.pslByUserId.get(target.Id) ?? []]]),
+      } satisfies AssignmentState;
+      return buildPersonaTargetState({
+        target,
+        loginRows: stateMaps.userLoginByUserId.get(target.Id) ?? [],
+        rows: assignmentRows,
+        refs,
+        personas: definitions.personas,
+        heldPersonas,
+        removePersonas,
+        flags: liveFlags,
+        ledgerTargets: ledgerTargetsForUser(options.ledgerTargets, target, heldPersonas, removePersonas),
+      });
+    });
+    const previewStates = selection.targets.map((target) => {
+      const heldPersonas = heldPersonasFromFile(definitions.usersDoc, target);
+      const removePersonas = options.allPersonas ? 'all' : options.personas ?? [];
+      const assignmentRows = {
+        userLoginByUserId: new Map([[target.Id, stateMaps.userLoginByUserId.get(target.Id) ?? []]]),
+        psaByUserId: new Map([[target.Id, stateMaps.psaByUserId.get(target.Id) ?? []]]),
+        groupByUserId: new Map([[target.Id, stateMaps.groupByUserId.get(target.Id) ?? []]]),
+        pslByUserId: new Map([[target.Id, stateMaps.pslByUserId.get(target.Id) ?? []]]),
+      } satisfies AssignmentState;
+      return buildPersonaTargetState({
+        target,
+        loginRows: stateMaps.userLoginByUserId.get(target.Id) ?? [],
+        rows: assignmentRows,
+        refs,
+        personas: definitions.personas,
+        heldPersonas,
+        removePersonas,
+        flags: previewFlags,
+        ledgerTargets: ledgerTargetsForUser(options.ledgerTargets, target, heldPersonas, removePersonas),
+      });
+    });
+    const previewUsers = selection.errors.map(failedResult).concat(previewStates.map((state) => state.result));
+    return {
+      states,
+      errors: selection.errors,
+      preview: { summary: summarizeLifecycle(previewUsers), users: previewUsers },
+      warnings: refs.warnings,
+      revocationRows: states.flatMap((state) => state.revocationRows ?? []),
+    };
+  }
   const states = selection.targets.map((target) =>
     buildTargetState({
       target,

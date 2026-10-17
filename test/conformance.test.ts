@@ -3,11 +3,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { expect } from 'chai';
-import { planFromState } from '../src/provisioning/conformancePlan.js';
-import { parseConformanceFixture } from '../src/spec/parse.js';
-import type { ConformanceFixture } from '../src/spec/conformanceFixture.js';
+import { planFromState, planRevocationFromState } from '../src/provisioning/conformancePlan.js';
+import { parseConformanceFixture, parseRevocationFixture } from '../src/spec/parse.js';
+import type { ConformanceFixture, RevocationFixture } from '../src/spec/conformanceFixture.js';
 
 const fixtureDirectory = join(dirname(fileURLToPath(import.meta.url)), '../conformance/fixtures');
+const revocationFixtureDirectory = join(fixtureDirectory, 'revocation');
 
 const readFixtures = async (): Promise<Array<{ name: string; fixture: ConformanceFixture }>> => {
   const names = (await readdir(fixtureDirectory)).filter((name) => name.endsWith('.json')).sort();
@@ -15,6 +16,18 @@ const readFixtures = async (): Promise<Array<{ name: string; fixture: Conformanc
     names.map(async (name) => ({
       name,
       fixture: parseConformanceFixture(JSON.parse(await readFile(join(fixtureDirectory, name), 'utf8')) as unknown),
+    }))
+  );
+};
+
+const readRevocationFixtures = async (): Promise<Array<{ name: string; fixture: RevocationFixture }>> => {
+  const names = (await readdir(revocationFixtureDirectory)).filter((name) => name.endsWith('.json')).sort();
+  return Promise.all(
+    names.map(async (name) => ({
+      name,
+      fixture: parseRevocationFixture(
+        JSON.parse(await readFile(join(revocationFixtureDirectory, name), 'utf8')) as unknown
+      ),
     }))
   );
 };
@@ -55,5 +68,26 @@ describe('conformance fixtures', () => {
     expect(planFromState(fixture.fixture.definitions, fixture.fixture.orgState)).to.deep.equal(
       fixture.fixture.expectedPlan
     );
+  });
+
+  it('validates and matches every persona revocation fixture', async () => {
+    const fixtures = await readRevocationFixtures();
+    expect(fixtures).to.have.length(7);
+    for (const { name, fixture } of fixtures)
+      expect(planRevocationFromState(fixture), name).to.deep.equal(fixture.expectedPlan);
+  });
+
+  it('validates every revocation fixture with its generated JSON Schema', async () => {
+    const schema = JSON.parse(
+      await readFile(join(revocationFixtureDirectory, '../../../schemas/revocation-fixture.schema.json'), 'utf8')
+    ) as object;
+    const validate = new Ajv2020({ allErrors: true }).compile(schema);
+    const fixtures = await readRevocationFixtures();
+    const rawFixtures = await Promise.all(
+      fixtures.map(({ name }) => readFile(join(revocationFixtureDirectory, name), 'utf8'))
+    );
+    rawFixtures.forEach((raw, index) => {
+      expect(validate(JSON.parse(raw) as unknown), fixtures[index].name).to.equal(true);
+    });
   });
 });

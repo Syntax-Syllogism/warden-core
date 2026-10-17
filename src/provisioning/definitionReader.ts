@@ -113,32 +113,37 @@ export const resolveDefinitions = async (
   fieldMap: Map<string, UserFieldMeta>,
   message: DefinitionMessages = defaultDefinitionMessages
 ): Promise<ProvisionDefinitionDocuments> => {
-  if (source.usersDoc) {
-    const relatedDoc =
-      source.relatedDoc ??
-      (source.relatedPath
-        ? parseRelatedCatalog(await readDefinitionJson(source.relatedPath, message.invalidJson))
-        : undefined);
-    return {
-      usersDoc: source.usersDoc,
-      personasDoc: source.personasDoc ?? { personas: {} },
-      personasSupplied: source.personasSupplied ?? (source.personasDoc ? true : Boolean(source.personasPath)),
-      ...(relatedDoc ? { relatedDoc } : {}),
-    };
-  }
-  if (!source.usersPath)
-    throw new DefinitionError('errorInvalidJson', message.invalidJson('users-def', 'missing path'));
-  return readProvisionDefinitions(
-    source.usersPath,
-    source.personasPath,
-    {
-      inputFormat: source.inputFormat,
-      csvListDelimiter: source.csvListDelimiter,
-      fieldMap,
-      relatedPath: source.relatedPath,
-    },
-    message.invalidJson
-  );
+  const usersDoc = source.usersDoc
+    ? source.usersDoc
+    : source.usersPath
+    ? await readUsersDefinition(
+        source.usersPath,
+        {
+          inputFormat: source.inputFormat,
+          csvListDelimiter: source.csvListDelimiter,
+          fieldMap,
+        },
+        message.invalidJson
+      )
+    : undefined;
+  if (!usersDoc) throw new DefinitionError('errorInvalidJson', message.invalidJson('users-def', 'missing path'));
+
+  const personasDoc = source.personasDoc
+    ? source.personasDoc
+    : source.personasPath
+    ? parsePersonaDefinitions(await readDefinitionJson(source.personasPath, message.invalidJson))
+    : { personas: {} };
+  const relatedDoc =
+    source.relatedDoc ??
+    (source.relatedPath
+      ? parseRelatedCatalog(await readDefinitionJson(source.relatedPath, message.invalidJson))
+      : undefined);
+  return {
+    usersDoc,
+    personasDoc,
+    personasSupplied: source.personasSupplied ?? Boolean(source.personasDoc ?? source.personasPath),
+    ...(relatedDoc ? { relatedDoc } : {}),
+  };
 };
 
 export const loadValidatedDefinitions = async (
@@ -146,14 +151,6 @@ export const loadValidatedDefinitions = async (
   fieldMap: Map<string, UserFieldMeta>,
   message: DefinitionMessages = defaultDefinitionMessages
 ): Promise<ProvisionDefinitionDocuments> => {
-  if (source.usersDoc) {
-    assertValidDefinitions(
-      source.usersDoc,
-      source.personasDoc ?? { personas: {} },
-      source.personasSupplied ?? Boolean(source.personasDoc),
-      message
-    );
-  }
   const definitions = await resolveDefinitions(source, fieldMap, message);
   const usersDoc = parseUsersDefinition(definitions.usersDoc);
   const personasDoc = parsePersonaDefinitions(definitions.personasDoc);

@@ -86,7 +86,7 @@ The preview and apply result preserve input order and use the same public
 user-row shape. `matchedBy` is explicitly `null` when no match field is
 available. Validation-failure rows retain available identity and match values,
 but have `matched: false` because they never reached matching. CSV validation
-and save errors include a `path:line — ` prefix when source metadata is
+and save errors include a `path:line —` prefix when source metadata is
 available. Expected provisioning failures use core's default English messages
 rather than raw message keys.
 

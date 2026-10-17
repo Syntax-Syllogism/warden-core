@@ -4,6 +4,7 @@ export type LifecycleNotice = {
   key: string;
   count?: number;
   items?: LabelBundle[];
+  detail?: string;
 };
 
 export type LabelBundle = {

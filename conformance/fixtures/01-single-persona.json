@@ -27,8 +27,32 @@
     "groupMembers": []
   },
   "expectedPlan": [
-    { "userKey": "alice", "userId": "005000000000001AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Support User", "error": "" },
-    { "userKey": "alice", "userId": "005000000000001AAA", "category": "PublicGroup", "action": "wouldAssign", "status": "planned", "detail": "Support Group", "error": "" },
-    { "userKey": "alice", "userId": "005000000000001AAA", "category": "Queue", "action": "wouldAssign", "status": "planned", "detail": "Case Queue", "error": "" }
+    {
+      "userKey": "alice",
+      "userId": "005000000000001AAA",
+      "category": "PermissionSet",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Support User",
+      "error": ""
+    },
+    {
+      "userKey": "alice",
+      "userId": "005000000000001AAA",
+      "category": "PublicGroup",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Support Group",
+      "error": ""
+    },
+    {
+      "userKey": "alice",
+      "userId": "005000000000001AAA",
+      "category": "Queue",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Case Queue",
+      "error": ""
+    }
   ]
 }

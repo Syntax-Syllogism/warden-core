@@ -4,8 +4,9 @@ import { personaDefinitionsFileSchema } from './personaDefinitions.js';
 import { relatedCatalogSchema } from './relatedCatalog.js';
 import { snapshotFileSchema } from './snapshot.js';
 import { usersDefinitionFileSchema } from './usersDefinition.js';
-import { conformanceFixtureSchema } from './conformanceFixture.js';
+import { conformanceFixtureSchema, revocationFixtureSchema } from './conformanceFixture.js';
 import type { ConformanceFixture } from './conformanceFixture.js';
+import type { RevocationFixture } from './conformanceFixture.js';
 import type { PersonaDefinitionsFile } from './personaDefinitions.js';
 import type { RelatedCatalog } from './relatedCatalog.js';
 import type { UserSnapshotFile } from './snapshot.js';
@@ -113,3 +114,10 @@ export const parseConformanceFixture = (input: unknown): ConformanceFixture =>
   parseOrThrow(safeParseConformanceFixture(input));
 export const validateConformanceFixtureText = (text: string): SchemaResult<ConformanceFixture> =>
   parseText((input) => parseVersionedSchema(conformanceFixtureSchema, input), text, 'Conformance fixture');
+
+export const safeParseRevocationFixture = (input: unknown): SchemaResult<RevocationFixture> =>
+  parseVersionedSchema(revocationFixtureSchema, input);
+export const parseRevocationFixture = (input: unknown): RevocationFixture =>
+  parseOrThrow(safeParseRevocationFixture(input));
+export const validateRevocationFixtureText = (text: string): SchemaResult<RevocationFixture> =>
+  parseText((input) => parseVersionedSchema(revocationFixtureSchema, input), text, 'Revocation fixture');

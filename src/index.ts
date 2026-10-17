@@ -35,6 +35,7 @@ export { executePersonaDiff, executeUserToUserDiff } from './lifecycle/userDiff.
 export { renderUserDiffCsv, renderUserDiffHuman } from './lifecycle/diffOutput.js';
 export { renderUserConformanceCsv, renderUserConformanceHuman, verifyUserDiff } from './lifecycle/conformance.js';
 export { loadAssignmentState } from './lifecycle/assignmentState.js';
+export { planPersonaRevocation } from './lifecycle/personaRevokePlan.js';
 export { runAssignmentCreates, runRecordUpdate } from './lifecycle/dmlRunner.js';
 
 export { ProvisioningError, DefinitionError } from './provisioning/errors.js';
@@ -55,6 +56,9 @@ export {
   userSnapshotEntrySchema,
   usersDefinitionFileSchema,
   USERS_CSV_COLUMNS,
+  revocationFixtureSchema,
+  revocationPlanRowSchema,
+  revocationRequestSchema,
 } from './spec/index.js';
 export {
   parsePersonaDefinitions,
@@ -69,6 +73,9 @@ export {
   validateRelatedCatalogText,
   validateSnapshotText,
   validateUsersDefinitionText,
+  parseRevocationFixture,
+  safeParseRevocationFixture,
+  validateRevocationFixtureText,
 } from './spec/index.js';
 
 export { detectInputFormat, serializeCsv } from './shared/csv.js';
@@ -94,7 +101,7 @@ export {
   unfreezeOptionsSchema,
 } from './commandOptions.js';
 export { uiHints } from './useCase.js';
-export { planFromState } from './provisioning/conformancePlan.js';
+export { planFromState, planRevocationFromState } from './provisioning/conformancePlan.js';
 export {
   conformanceCategorySchema,
   conformanceDefinitionsSchema,
@@ -112,6 +119,7 @@ export type {
   AccessOptions,
   DiffOptions,
   FreezeOptions,
+  LedgerTargetProvenance,
   ProvisionOptions,
   RestoreOptions,
   SnapshotOptions,
@@ -150,6 +158,9 @@ export type {
   ConformanceFixture,
   ConformanceOrgState,
   ConformancePlanRow,
+  RevocationFixture,
+  RevocationPlanRow,
+  RevocationRequest,
 } from './spec/index.js';
 export type {
   PersonaDefinition,

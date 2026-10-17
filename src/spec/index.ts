@@ -9,6 +9,9 @@ export {
   conformanceOrgStateSchema,
   conformancePlanRowSchema,
   conformanceUsersDefinitionSchema,
+  revocationFixtureSchema,
+  revocationPlanRowSchema,
+  revocationRequestSchema,
 } from './conformanceFixture.js';
 export {
   parsePersonaDefinitions,
@@ -26,6 +29,9 @@ export {
   parseConformanceFixture,
   safeParseConformanceFixture,
   validateConformanceFixtureText,
+  parseRevocationFixture,
+  safeParseRevocationFixture,
+  validateRevocationFixtureText,
 } from './parse.js';
 
 export type { PersonaDefinition, PersonaDefinitionsFile } from './personaDefinitions.js';
@@ -44,5 +50,8 @@ export type {
   ConformanceFixture,
   ConformanceOrgState,
   ConformancePlanRow,
+  RevocationFixture,
+  RevocationPlanRow,
+  RevocationRequest,
 } from './conformanceFixture.js';
 export type { SchemaFailure, SchemaIssue, SchemaResult, SchemaSuccess } from './parse.js';

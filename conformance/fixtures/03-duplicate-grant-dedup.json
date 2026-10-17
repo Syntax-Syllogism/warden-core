@@ -19,6 +19,14 @@
     "groupMembers": []
   },
   "expectedPlan": [
-    { "userKey": "duplicate-user", "userId": "005000000000003AAA", "category": "PermissionSet", "action": "wouldAssign", "status": "planned", "detail": "Shared Access", "error": "" }
+    {
+      "userKey": "duplicate-user",
+      "userId": "005000000000003AAA",
+      "category": "PermissionSet",
+      "action": "wouldAssign",
+      "status": "planned",
+      "detail": "Shared Access",
+      "error": ""
+    }
   ]
 }

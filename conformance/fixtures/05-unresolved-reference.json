@@ -12,6 +12,14 @@
     "groupMembers": []
   },
   "expectedPlan": [
-    { "userKey": "unresolved-user", "userId": "005000000000005AAA", "category": "PermissionSet", "action": "unresolved", "status": "unmanaged", "detail": "Missing_Set", "error": "Unresolved PermissionSet reference \"Missing_Set\"." }
+    {
+      "userKey": "unresolved-user",
+      "userId": "005000000000005AAA",
+      "category": "PermissionSet",
+      "action": "unresolved",
+      "status": "unmanaged",
+      "detail": "Missing_Set",
+      "error": "Unresolved PermissionSet reference \"Missing_Set\"."
+    }
   ]
 }

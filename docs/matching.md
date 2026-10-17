@@ -38,4 +38,3 @@ fails duplicate matches rather than creating or updating an uncertain user.
 Use `matchKey(field, value)` for the same key format used by the resolver. Use
 `validateMatchField` with the described User field map before accepting a field
 from user input.
-

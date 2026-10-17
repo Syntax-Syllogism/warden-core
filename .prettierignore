@@ -1,4 +1,15 @@
-lib/
+# Generated or vendored output
 node_modules/
+lib/
+dist/
 coverage/
+docs-site/dist/
+docs-site/.astro/
+.history/
+.loop/
+
+# Lockfiles
+package-lock.json
+
+# Generated JSON schemas
 schemas/

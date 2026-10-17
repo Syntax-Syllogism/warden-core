@@ -78,6 +78,24 @@ export const conformancePlanRowSchema = z
   })
   .describe('One deterministic reconciliation plan row.');
 
+export const revocationRequestSchema = z
+  .object({
+    removePersonas: z.union([z.literal('all'), z.array(z.string())]).describe('Persona API names to remove.'),
+  })
+  .describe('Persona revocation request.');
+
+export const revocationPlanRowSchema = z
+  .object({
+    userKey: z.string().min(1),
+    userId: z.string().min(1),
+    category: conformanceCategorySchema,
+    action: z.enum(['wouldRemove', 'keptByOtherPersona', 'alreadyAbsent', 'unresolved']),
+    status: z.enum(['planned', 'kept', 'unchanged', 'unmanaged']),
+    detail: z.string(),
+    error: z.string(),
+  })
+  .describe('One deterministic persona revocation plan row.');
+
 export const conformanceFixtureSchema = z
   .object({
     schemaVersion: schemaVersionSchema,
@@ -87,8 +105,21 @@ export const conformanceFixtureSchema = z
   })
   .describe('A Warden v1 conformance fixture: definitions plus simulated org state and expected plan.');
 
+export const revocationFixtureSchema = z
+  .object({
+    schemaVersion: schemaVersionSchema,
+    definitions: conformanceDefinitionsSchema,
+    orgState: conformanceOrgStateSchema,
+    revocation: revocationRequestSchema,
+    expectedPlan: z.array(revocationPlanRowSchema).describe('Expected persona revocation plan rows.'),
+  })
+  .describe('A Warden v1 persona revocation fixture.');
+
 export type ConformanceFixture = z.infer<typeof conformanceFixtureSchema>;
 export type ConformanceDefinitions = z.infer<typeof conformanceDefinitionsSchema>;
 export type ConformanceOrgState = z.infer<typeof conformanceOrgStateSchema>;
 export type ConformanceCategory = z.infer<typeof conformanceCategorySchema>;
 export type ConformancePlanRow = z.infer<typeof conformancePlanRowSchema>;
+export type RevocationRequest = z.infer<typeof revocationRequestSchema>;
+export type RevocationPlanRow = z.infer<typeof revocationPlanRowSchema>;
+export type RevocationFixture = z.infer<typeof revocationFixtureSchema>;

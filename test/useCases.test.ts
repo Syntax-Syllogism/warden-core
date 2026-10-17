@@ -7,6 +7,7 @@ import sinon from 'sinon';
 import {
   access,
   commandDescriptors,
+  DefinitionError,
   diff,
   freeze,
   provision,
@@ -23,6 +24,7 @@ import {
   type StripPlan,
 } from '../src/index.js';
 import { WardenError } from '../src/errors.js';
+import { LifecycleError } from '../src/lifecycle/errors.js';
 
 const userFields = [
   { name: 'Username', createable: true, updateable: true, filterable: true, externalId: true },
@@ -165,6 +167,240 @@ describe('command use cases', () => {
       keepLicenses: false,
     });
     expect(plan.preview.users[0].actions.map((action) => action.key)).to.include('wouldDeactivate');
+  });
+
+  it('plans persona removal without freezing or deactivating by default', async () => {
+    const query = sinon.stub().callsFake(async (soql: string) => {
+      if (soql.includes('FROM User WHERE'))
+        return { records: [{ Id: '005user', IsActive: true, Name: 'Alice', Username: 'alice@example.test' }] };
+      if (soql.includes('FROM PermissionSet WHERE'))
+        return { records: [{ Id: '0PSsupport', Name: 'Support_User', Label: 'Support User' }] };
+      if (soql.includes('FROM PermissionSetAssignment'))
+        return {
+          records: [
+            {
+              Id: '0PSA',
+              AssigneeId: '005user',
+              PermissionSetId: '0PSsupport',
+              PermissionSetGroupId: null,
+              PermissionSet: { IsOwnedByProfile: false, Name: 'Support_User', Label: 'Support User' },
+            },
+          ],
+        };
+      return { records: [] };
+    });
+    const conn = {
+      query,
+      describe: sinon.stub().resolves({
+        fields: [{ name: 'Username', createable: true, updateable: true, filterable: true, externalId: true }],
+      }),
+    } as never;
+    const plan = await strip.plan(conn, {
+      user: 'Username:alice@example.test',
+      usersDoc: { users: [{ Username: 'alice@example.test', match: 'Username', personas: ['support'] }] },
+      personasDoc: { personas: { support: { permissionSets: ['Support_User'] } } },
+      personas: ['support'],
+      keepPermsets: false,
+      keepPermsetGroups: false,
+      keepPublicGroups: false,
+      keepQueues: false,
+      keepLicenses: false,
+      noFreeze: false,
+      noDeactivate: false,
+      ledgerTargets: [],
+    });
+    expect(plan.states[0]?.steps).to.deep.equal([
+      {
+        kind: 'delete',
+        sobject: 'PermissionSetAssignment',
+        ids: ['0PSA'],
+        actionKey: 'removedPermissionSet',
+        items: [{ id: '0PSsupport', apiName: 'Support_User', label: 'Support User', type: 'PermissionSet' }],
+      },
+    ]);
+    expect(plan.states[0]?.steps.some((step) => step.kind === 'update')).to.equal(false);
+    expect(plan.preview.users[0]?.actions.map((action) => action.key)).to.include('wouldRemovePermissionSet');
+    expect(plan.preview.users[0]?.status).to.equal('planned');
+    expect(plan.preview.summary).to.deep.include({ changed: 1, unchanged: 0 });
+    expect(plan.states[0]?.result.warnings).to.include(
+      'removedUnmanagedGrant: Support User for Username:alice@example.test.'
+    );
+  });
+
+  it('loads persona definitions from a path when users are supplied in memory', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'warden-strip-persona-'));
+    const personasPath = join(directory, 'personas.json');
+    try {
+      await writeFile(personasPath, JSON.stringify({ personas: { support: { permissionSets: ['Support_User'] } } }));
+      const query = sinon.stub().callsFake(async (soql: string) => {
+        if (soql.includes('FROM User WHERE'))
+          return { records: [{ Id: '005user', IsActive: true, Name: 'Alice', Username: 'alice@example.test' }] };
+        if (soql.includes('FROM PermissionSet WHERE'))
+          return { records: [{ Id: '0PSsupport', Name: 'Support_User', Label: 'Support User' }] };
+        if (soql.includes('FROM PermissionSetAssignment'))
+          return {
+            records: [
+              {
+                Id: '0PSA',
+                AssigneeId: '005user',
+                PermissionSetId: '0PSsupport',
+                PermissionSetGroupId: null,
+                PermissionSet: { IsOwnedByProfile: false, Name: 'Support_User', Label: 'Support User' },
+              },
+            ],
+          };
+        return { records: [] };
+      });
+      const conn = {
+        query,
+        describe: sinon.stub().resolves({
+          fields: [{ name: 'Username', createable: true, updateable: true, filterable: true, externalId: true }],
+        }),
+      } as never;
+
+      const plan = await strip.plan(conn, {
+        user: 'Username:alice@example.test',
+        usersDoc: { users: [{ Username: 'alice@example.test', match: 'Username', personas: ['support'] }] },
+        personasPath,
+        personas: ['support'],
+        keepPermsets: false,
+        keepPermsetGroups: false,
+        keepPublicGroups: false,
+        keepQueues: false,
+        keepLicenses: false,
+        noFreeze: false,
+        noDeactivate: false,
+      });
+
+      expect(plan.states[0]?.steps).to.deep.include({
+        kind: 'delete',
+        sobject: 'PermissionSetAssignment',
+        ids: ['0PSA'],
+        actionKey: 'removedPermissionSet',
+        items: [{ id: '0PSsupport', apiName: 'Support_User', label: 'Support User', type: 'PermissionSet' }],
+      });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('scopes ledger provenance to each selected user and removed persona', async () => {
+    const query = sinon.stub().callsFake(async (soql: string) => {
+      if (soql.includes('FROM User WHERE'))
+        return {
+          records: [
+            { Id: '005alice', IsActive: true, Name: 'Alice', Username: 'alice@example.test' },
+            { Id: '005bob', IsActive: true, Name: 'Bob', Username: 'bob@example.test' },
+          ],
+        };
+      if (soql.includes('FROM PermissionSet WHERE'))
+        return { records: [{ Id: '0PSsupport', Name: 'Support_User', Label: 'Support User' }] };
+      if (soql.includes('FROM PermissionSetAssignment'))
+        return {
+          records: [
+            {
+              Id: '0PSAAlice',
+              AssigneeId: '005alice',
+              PermissionSetId: '0PSsupport',
+              PermissionSetGroupId: null,
+              PermissionSet: { IsOwnedByProfile: false, Name: 'Support_User', Label: 'Support User' },
+            },
+            {
+              Id: '0PSABob',
+              AssigneeId: '005bob',
+              PermissionSetId: '0PSsupport',
+              PermissionSetGroupId: null,
+              PermissionSet: { IsOwnedByProfile: false, Name: 'Support_User', Label: 'Support User' },
+            },
+          ],
+        };
+      return { records: [] };
+    });
+    const conn = {
+      query,
+      describe: sinon.stub().resolves({
+        fields: [{ name: 'Username', createable: true, updateable: true, filterable: true, externalId: true }],
+      }),
+    } as never;
+
+    const plan = await strip.plan(conn, {
+      usersDoc: {
+        users: [
+          { Username: 'alice@example.test', match: 'Username', personas: ['support'] },
+          { Username: 'bob@example.test', match: 'Username', personas: ['support'] },
+        ],
+      },
+      personasDoc: { personas: { support: { permissionSets: ['Support_User'] } } },
+      personas: ['support'],
+      noFreeze: false,
+      noDeactivate: false,
+      keepPermsets: false,
+      keepPermsetGroups: false,
+      keepPublicGroups: false,
+      keepQueues: false,
+      keepLicenses: false,
+      ledgerTargets: [{ userId: '005alice', persona: 'support', targetId: '0PSsupport' }],
+    });
+
+    expect(plan.states.find((state) => state.target.Id === '005alice')?.result.warnings).not.to.include(
+      'removedUnmanagedGrant: Support User for Username:alice@example.test.'
+    );
+    expect(plan.states.find((state) => state.target.Id === '005bob')?.result.warnings).to.include(
+      'removedUnmanagedGrant: Support User for Username:bob@example.test.'
+    );
+  });
+
+  it('validates in-memory persona definitions before resolving references', async () => {
+    const conn = lifecycleConnection();
+    try {
+      await strip.plan(conn, {
+        user: 'Username:alice@example.test',
+        usersDoc: { users: [{ Username: 'alice@example.test', match: 'Username', personas: ['support'] }] },
+        personasDoc: {},
+        personas: ['support'],
+        noFreeze: false,
+        noDeactivate: false,
+        keepPermsets: false,
+        keepPermsetGroups: false,
+        keepPublicGroups: false,
+        keepQueues: false,
+        keepLicenses: false,
+      });
+      expect.fail('Expected malformed persona definitions to fail validation.');
+    } catch (error) {
+      expect(error).to.be.instanceOf(DefinitionError);
+      expect((error as DefinitionError).code).to.equal('schema-invalid');
+    }
+  });
+
+  it('rejects unsupported org persona loading and missing file holdings with stable errors', async () => {
+    const conn = lifecycleConnection();
+    const baseOptions = {
+      user: 'Username:alice@example.test',
+      personas: ['support'],
+      noFreeze: false,
+      noDeactivate: false,
+      keepPermsets: false,
+      keepPermsetGroups: false,
+      keepPublicGroups: false,
+      keepQueues: false,
+      keepLicenses: false,
+    };
+    await Promise.all(
+      [{ personaSource: 'org' as const, usersDoc: { users: [] } }, {}].map(async (options) => {
+        try {
+          await strip.plan(conn, { ...baseOptions, ...options });
+          expect.fail('Expected persona source validation to fail.');
+        } catch (error) {
+          expect(error).to.be.instanceOf(LifecycleError);
+          expect(error).to.be.instanceOf(WardenError);
+          expect((error as WardenError).code).to.equal(
+            options.personaSource === 'org' ? 'errorPersonaSourceUnsupported' : 'errorPersonaSourceRequiresUsers'
+          );
+          expect((error as WardenError).data).to.deep.include({ personaSource: options.personaSource ?? 'file' });
+        }
+      })
+    );
   });
 
   it('applies a JSON-cloned strip plan and performs the deactivate DML', async () => {
